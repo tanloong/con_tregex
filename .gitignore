@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+*__pycache__/
+
+# packaging
+build/
+dist/
+*.egg-info
+
+# unit test / coverage report
+htmlcov/
+.coverage
+coverage.xml
+
+# mypy
+.mypy_cache/
+
+# miscellaneous
+.vscode
+*.zip
+*.tar.gz
+*.parsed
+*.mp4
+*.out
+doc
+note.txt
+test.py
+notes.md
+tmp
