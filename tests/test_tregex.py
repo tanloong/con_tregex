@@ -8,16 +8,26 @@ from .base_tmpl import tree as tree_string
 
 from pytregex.tregex import TregexPattern
 
+
 class TestTree(BaseTmpl):
     def setUp(self):
         self.tree_string = tree_string
         return super().setUp()
 
     def test_JoãoSilva(self):
-        tregex1 = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))")
-        tregex2 = TregexPattern("PNT=p >>- (/(.+)/#1%var=l >, (__=t <- (__=r <, /(.+)/#1%var=m <- (__ <, CONJ <- /(.+)/#1%var=z))))")
-        tregex3 = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))")
-        tree_string = "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
+        tregex1 = TregexPattern(
+            "PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))"
+        )
+        tregex2 = TregexPattern(
+            "PNT=p >>- (/(.+)/#1%var=l >, (__=t <- (__=r <, /(.+)/#1%var=m <- (__ <, CONJ <-"
+            " /(.+)/#1%var=z))))"
+        )
+        tregex3 = TregexPattern(
+            "PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))"
+        )
+        tree_string = (
+            "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
+        )
 
         self.assertTrue(tregex1.findall(tree_string))
         # self.assertTrue(tregex2.findall(tree_string))

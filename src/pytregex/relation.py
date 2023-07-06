@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java
 # last modified at Apr 3, 2022 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/tregex/Relation.java)
 
+
 class Relation:
     hf = CollinsHeadFinder()
 
@@ -100,7 +101,7 @@ class Relation:
 
     @classmethod
     def immediate_left_sister_of(cls, t1: "Tree", t2: "Tree") -> bool:
-        # t1 is t2 or t1 is root
+        # t1 is t2 or to is root
         if t1 is t2 or t1.parent is None:
             return False
 
@@ -192,19 +193,19 @@ class Relation:
 
     @classmethod
     def precedes(cls, t1: "Tree", t2: "Tree") -> bool:
-      return t1.right_edge <= t2.left_edge
+        return t1.right_edge <= t2.left_edge
 
     @classmethod
     def immediately_precedes(cls, t1: "Tree", t2: "Tree") -> bool:
-      return t1.right_edge == t2.left_edge
+        return t1.right_edge == t2.left_edge
 
     @classmethod
     def follows(cls, t1: "Tree", t2: "Tree") -> bool:
-      return t2.right_edge <= t1.left_edge
+        return t2.right_edge <= t1.left_edge
 
     @classmethod
     def immediately_follows(cls, t1: "Tree", t2: "Tree") -> bool:
-      return t2.right_edge == t1.left_edge
+        return t2.right_edge == t1.left_edge
 
     @classmethod
     def ancestor_of_leaf(cls, t1: "Tree", t2: "Tree") -> bool:

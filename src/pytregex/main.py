@@ -15,6 +15,7 @@ from tregex import TregexPattern
 # the error message if it fails.
 TregexProcedureResult = Tuple[bool, Optional[str]]
 
+
 class TregexUI:
     def __init__(self) -> None:
         self.args_parser: argparse.ArgumentParser = self.create_args_parser()
@@ -33,7 +34,7 @@ class TregexUI:
         )
         return args_parser
 
-    def parse_args(self, argv:List[str]) -> TregexProcedureResult:
+    def parse_args(self, argv: List[str]) -> TregexProcedureResult:
         options, ipath_list = self.args_parser.parse_known_args(argv[1:])
         logging.basicConfig(format="%(message)s", level=logging.INFO)
 
@@ -54,11 +55,14 @@ class TregexUI:
 
     def run_matcher(self) -> TregexProcedureResult:
         if not self.verified_ifile_list:
-            tree_string = "(VP (VP (VBZ Try) (NP (NP (DT this) (NN wine)) (CC and) (NP (DT these) (NNS snails)))) (PUNCT .))"
+            tree_string = (
+                "(VP (VP (VBZ Try) (NP (NP (DT this) (NN wine)) (CC and) (NP (DT these) (NNS"
+                " snails)))) (PUNCT .))"
+            )
         else:
             tree_string = ""
             for ifile in self.verified_ifile_list:
-                with open(ifile, 'r', encoding="utf-8") as f:
+                with open(ifile, "r", encoding="utf-8") as f:
                     tree_string += f.read()
 
         pattern = TregexPattern(self.options.pattern)
@@ -67,6 +71,7 @@ class TregexUI:
             sys.stdout.write(f"{m.to_string()}\n")
 
         return True, None
+
     def run(self) -> TregexProcedureResult:
         if self.options.version:
             return self.show_version()
@@ -78,8 +83,10 @@ class TregexUI:
 
     def show_version(self) -> TregexProcedureResult:
         from about import __version__
+
         print(__version__)
         return True, None
+
 
 def main() -> None:
     ui = TregexUI()
