@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from head_finder import HeadFinder
     from tree import Tree
 
+# translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java
+# last modified at Apr 3, 2022 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/tregex/Relation.java)
 
 class Relation:
     hf = CollinsHeadFinder()

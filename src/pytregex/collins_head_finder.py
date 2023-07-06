@@ -8,9 +8,12 @@ from abstract_collins_head_finder import AbstractCollinsHeadFinder
 if TYPE_CHECKING:
     from .tree import Tree
 
+# translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/CollinsHeadFinder.java
+# last modified at May 24, 2019 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/CollinsHeadFinder.java)
+
 
 class CollinsHeadFinder(AbstractCollinsHeadFinder):
-    def __init__(self, *categoriesToAvoid):
+    def __init__(self, *categoriesToAvoid) -> None:
         super().__init__(*categoriesToAvoid)
         self.nonTerminalInfo = {  # {{{
             "ADJP": [
