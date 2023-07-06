@@ -3,7 +3,7 @@
 
 import re
 
-from con_tregex.tree import Tree
+from pytregex.tree import Tree
 
 from .base_tmpl import BaseTmpl
 from .base_tmpl import tree as tree_string

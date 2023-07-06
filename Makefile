@@ -7,11 +7,11 @@ clean:
 	rm -rf tests/__pycache__
 	rm -rf build
 	rm -rf dist
-	rm -rf *.egg-info
+	rm -rf src/*.egg-info
 	rm -rf htmlcov
 	rm -rf coverage.xml
 	rm -rf src/parser.out
-	pip uninstall -y tregex || true
+	pip uninstall -y pytregex || true
 
 build:
 	python setup.py sdist bdist_wheel
@@ -30,9 +30,9 @@ cov:
 	python -m coverage html
 
 lint:
-	black src/ tests/ --exclude src/tregex/ply --line-length 97 --preview
-	flake8 src/ tests/ --exclude src/tregex/ply/ --count --max-line-length=97 --statistics --ignore=E203,E501,W503,F841
-	mypy src/ --exclude src/tregex/ply/ --exclude src/tregex/test.py
+	black src/ tests/ --exclude src/pytregex/ply --line-length 97 --preview
+	flake8 src/ tests/ --exclude src/pytregex/ply/ --count --max-line-length=97 --statistics --ignore=E203,E501,W503,F841
+	mypy src/ --exclude src/pytregex/ply/ --exclude src/pytregex/test.py
 
 README_zh_tw.md: README_zh_cn.md
-	cd ~/software/zhconv && python -m zhconv zh-tw < ~/projects/tregex/README_zh_cn.md > ~/projects/tregex/README_zh_tw.md
+	cd ~/software/zhconv && python -m zhconv zh-tw < ~/projects/pytregex/README_zh_cn.md > ~/projects/pytregex/README_zh_tw.md

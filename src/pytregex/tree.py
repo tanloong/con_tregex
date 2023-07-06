@@ -256,6 +256,9 @@ class Tree:
 
     @property
     def left_edge(self) -> int:
+        """
+        note: return 0 for the leftmost node
+        """
         def left_edge_helper(t: "Tree", t1: "Tree") -> bool:
             nonlocal i
             if t is t1:
@@ -278,6 +281,9 @@ class Tree:
 
     @property
     def right_edge(self) -> int:
+        """
+        note: return 1 for the leftmost node
+        """
         def right_edge_helper(t: "Tree", t1: "Tree") -> bool:
             nonlocal i
             if t is t1:

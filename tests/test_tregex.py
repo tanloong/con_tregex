@@ -6,7 +6,7 @@
 from .base_tmpl import BaseTmpl
 from .base_tmpl import tree as tree_string
 
-from con_tregex.tregex import TregexPattern
+from pytregex.tregex import TregexPattern
 
 class TestTree(BaseTmpl):
     def setUp(self):

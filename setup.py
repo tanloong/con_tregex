@@ -2,11 +2,11 @@ import setuptools
 
 with open("./README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
-with open("./src/con_tregex/about.py", "r", encoding="utf-8") as f:
+with open("./src/pytregex/about.py", "r", encoding="utf-8") as f:
     about = {}
     exec(f.read(), about)
 setuptools.setup(
-    name="con_tregex",
+    name="pytregex",
     version=about["__version__"],
     author="Long Tan",
     author_email="tanloong@foxmail.com",
@@ -29,5 +29,5 @@ setuptools.setup(
         "Operating System :: Microsoft :: Windows",
     ],
     python_requires=">=3.7",
-    entry_points={"console_scripts": ["tregex = con_tregex:main"]},
+    entry_points={"console_scripts": ["pytregex = pytregex:main"]},
 )
