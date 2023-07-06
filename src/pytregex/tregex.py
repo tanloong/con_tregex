@@ -116,9 +116,14 @@ class TregexMatcher(TregexMatcherBase):  # {{{
         cls, trees: List[Tree], or_nodes: List[str], is_negate: bool = False
     ) -> Generator[Tree, Any, None]:
         if not is_negate:
-            condition_func = lambda candidate, or_nodes: candidate in or_nodes
+
+            def condition_func(candidate, or_nodes) -> bool:
+                return candidate in or_nodes
+
         else:
-            condition_func = lambda candidate, or_nodes: not candidate in or_nodes
+
+            def condition_func(candidate, or_nodes) -> bool:
+                return candidate not in or_nodes
 
         if or_nodes[0] == "@":
             attr = "basic_category"
