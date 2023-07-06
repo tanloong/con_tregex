@@ -206,3 +206,6 @@ class Relation:
     def immediately_follows(cls, t1: "Tree", t2: "Tree") -> bool:
       return t2.right_edge == t1.left_edge
 
+    @classmethod
+    def ancestor_of_leaf(cls, t1: "Tree", t2: "Tree") -> bool:
+        return t1 is not t2 and t2.is_leaf and Relation.dominates(t1, t2)

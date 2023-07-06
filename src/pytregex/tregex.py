@@ -599,6 +599,20 @@ class TregexMatcher(TregexMatcherBase):  # {{{
         )
 
     @classmethod
+    def ancestor_of_leaf(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.ancestor_of_leaf(this_node, that_node),
+        )
+
+    @classmethod
     def and_(
         cls,
         these: NAMED_NODES,
@@ -678,6 +692,7 @@ class TregexPattern:
         ",,": TregexMatcher.follows,
         ".": TregexMatcher.immediately_precedes,
         ",": TregexMatcher.immediately_follows,
+        "<<<": TregexMatcher.ancestor_of_leaf,
     }
     # make sure long relations are checked first, or otherwise `>>` might
     # be tokenized as two `>`s.
