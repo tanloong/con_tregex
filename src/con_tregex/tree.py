@@ -6,7 +6,7 @@ import re
 from typing import Any, Generator, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .head_finder import HeadFinder
+    from head_finder import HeadFinder
 
 
 class Tree:
@@ -86,6 +86,12 @@ class Tree:
 
     def __len__(self) -> int:
         return len(self.children)
+
+    @property
+    def basic_category(self) -> Optional[str]:
+        if self.label is None:
+            return None
+        return self.label.split("-")[0]
 
     @property
     def is_leaf(self) -> bool:
@@ -247,6 +253,50 @@ class Tree:
             for child in self.children:
                 tagged_leaves.extend(child.tagged_yield_())
         return tagged_leaves
+
+    @property
+    def left_edge(self) -> int:
+        def left_edge_helper(t: "Tree", t1: "Tree") -> bool:
+            nonlocal i
+            if t is t1:
+                return True
+            elif t1.is_leaf:
+                j = len(t1.yield_())
+                i += j
+                return False
+            else:
+                for kid in t1.children:
+                    if left_edge_helper(t, kid):
+                        return True
+                return False
+
+        i = 0
+        if left_edge_helper(self, self.root):
+            return i
+        else:
+            raise RuntimeError("Tree is not a descendant of root.")
+
+    @property
+    def right_edge(self) -> int:
+        def right_edge_helper(t: "Tree", t1: "Tree") -> bool:
+            nonlocal i
+            if t is t1:
+                return True
+            elif t1.is_leaf:
+                j = len(t1.yield_())
+                i -= j
+                return False
+            else:
+                for kid in t1.children[::-1]:
+                    if right_edge_helper(t, kid):
+                        return True
+                return False
+
+        i = len(self.root.yield_())
+        if right_edge_helper(self, self.root):
+            return i
+        else:
+            raise RuntimeError("Tree is not a descendant of root.")
 
     def get_sister_index(self) -> Optional[int]:
         if self.parent is None:

@@ -3,9 +3,9 @@
 import re
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
-from .ply import lex, yacc
-from .relation import Relation
-from .tree import Tree
+from ply import lex, yacc
+from relation import Relation
+from tree import Tree
 
 NAMED_NODES = Tuple[List[Tree], Optional[str]]
 
@@ -112,19 +112,24 @@ class TregexMatcher(TregexMatcherBase):  # {{{
                 yield node
 
     @classmethod
-    def match_label(
-        cls, trees: List[Tree], label: str, is_negate: bool = False
+    def match_or_nodes(
+        cls, trees: List[Tree], or_nodes: List[str], is_negate: bool = False
     ) -> Generator[Tree, Any, None]:
         if not is_negate:
-            for tree in trees:
-                for node in tree.preorder_iter():
-                    if node.label == label:
-                        yield node
+            condition_func = lambda candidate, or_nodes: candidate in or_nodes
         else:
-            for tree in trees:
-                for node in tree.preorder_iter():
-                    if node.label != label:
-                        yield node
+            condition_func = lambda candidate, or_nodes: not candidate in or_nodes
+
+        if or_nodes[0] == "@":
+            attr = "basic_category"
+            or_nodes.pop(0)
+        else:
+            attr = "label"
+
+        for tree in trees:
+            for node in tree.preorder_iter():
+                if condition_func(getattr(node, attr), or_nodes):
+                    yield node
 
     @classmethod
     def match_regex(
@@ -538,6 +543,62 @@ class TregexMatcher(TregexMatcherBase):  # {{{
         )
 
     @classmethod
+    def precedes(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.precedes(this_node, that_node),
+        )
+
+    @classmethod
+    def follows(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.follows(this_node, that_node),
+        )
+
+    @classmethod
+    def immediately_precedes(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.immediately_precedes(this_node, that_node),
+        )
+
+    @classmethod
+    def immediately_follows(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.immediately_follows(this_node, that_node),
+        )
+
+    @classmethod
     def and_(
         cls,
         these: NAMED_NODES,
@@ -570,6 +631,7 @@ class TregexPattern:
         "LBRACKET",
         "RBRACKET",
         "EQUAL",
+        "AT",
     ]
     # tokens = ['REL_W_STR_ARG', 'NUMBER', 'VARNAME',]
 
@@ -612,10 +674,10 @@ class TregexPattern:
         "<#": TregexMatcher.immediately_headed_by,
         ">>#": TregexMatcher.heads,
         "<<#": TregexMatcher.headed_by,
-        # "..": TregexMatcher.precedes,
-        # ",,": TregexMatcher.follows,
-        # ".": TregexMatcher.immediately_precedes,
-        # ",": TregexMatcher.immediately_follows,
+        "..": TregexMatcher.precedes,
+        ",,": TregexMatcher.follows,
+        ".": TregexMatcher.immediately_precedes,
+        ",": TregexMatcher.immediately_follows,
     }
     # make sure long relations are checked first, or otherwise `>>` might
     # be tokenized as two `>`s.
@@ -631,6 +693,7 @@ class TregexPattern:
     t_LBRACKET = r"\["
     t_RBRACKET = r"\]"
     t_EQUAL = r"="
+    t_AT = r"@"
     t_ignore = " \r\t"
 
     def t_ID(self, t):
@@ -651,9 +714,13 @@ class TregexPattern:
             t.value = "(?" + "".join(set(flag)) + ")" + t.value
         return t
 
-    def __init__(self, tregex: str):
+    def t_error(self, t):
+        print("Tokenization Error: Illegal character '%s'" % t.value[0])
+        raise SystemExit()
+
+    def __init__(self, tregex_pattern: str):
         self.lexer = lex.lex(module=self)
-        self.lexer.input(tregex)
+        self.lexer.input(tregex_pattern)
         self.backrefs_map: Dict[str, list] = {}
         # relation:str, modifier:Optional["!"|"?"]
 
@@ -679,18 +746,37 @@ class TregexPattern:
 
         # 1. Label description
         # 1.1 simple label description
-        def p_blank(p):
-            """
-            named_nodes : BLANK
-            """
-            p[0] = (list(TregexMatcher.match_any(trees)), None)  # name=None
-
         def p_id(p):
             """
-            named_nodes : ID
+            or_nodes : ID
             """
-            label = p[1]
-            p[0] = (list(TregexMatcher.match_label(trees, label, is_negate=False)), None)
+            p[0] = [p[1]]
+
+        def p_at_or_nodes(p):
+            """
+            or_nodes : AT or_nodes
+            """
+            at = p[1]
+            or_nodes = p[2]
+            p[0] = [at] + or_nodes
+
+        def p_or_nodes_or_id(p):
+            """
+            or_nodes : or_nodes OR ID
+            """
+            or_nodes = p[1]
+            id = p[3]
+            p[0] = or_nodes + [id]
+
+        def p_or_nodes(p):
+            """
+            named_nodes : or_nodes
+            """
+            or_nodes = p[1]
+            p[0] = (
+                list(TregexMatcher.match_or_nodes(trees, or_nodes, is_negate=False)),
+                None,
+            )  # name: None
 
         def p_regex(p):
             """
@@ -702,22 +788,19 @@ class TregexPattern:
                 None,
             )
 
-        # 1.2 node naming
-        def p_equal_id(p):
+        def p_blank(p):
             """
-            named_nodes : named_nodes EQUAL ID
+            named_nodes : BLANK
             """
-            name = p[3]
-            p[0] = (p[1][0], name)
-            self.backrefs_map[name] = list(p[1][0])
+            p[0] = (list(TregexMatcher.match_any(trees)), None)  # name=None
 
-        # 1.3 node negation
-        def p_negation_id(p):
+        # node negation
+        def p_negation_or_nodes(p):
             """
-            named_nodes : NEGATION ID
+            named_nodes : NEGATION or_nodes
             """
-            label = p[2]
-            p[0] = (list(TregexMatcher.match_label(trees, label, is_negate=True)), None)
+            or_nodes = p[2]
+            p[0] = (list(TregexMatcher.match_or_nodes(trees, or_nodes, is_negate=True)), None)
 
         def p_negation_regex(p):
             """
@@ -729,34 +812,15 @@ class TregexPattern:
                 None,
             )
 
-        # 1.4 OR node description
-        def p_or_nodes(p):
+        # node naming
+        def p_named_nodes_equal_id(p):
             """
-            or_nodes : OR named_nodes
+            named_nodes : named_nodes EQUAL ID
             """
-            p[0] = p[2]
-
-        def p_or_nodes_or_nodes(p):
-            """
-            or_nodes : or_nodes or_nodes
-            """
-            (these_nodes, this_name), (those_nodes, that_name) = p[1], p[2]
-            p[0] = (these_nodes + those_nodes, that_name)
-            if that_name is not None:
-                self.backrefs_map[that_name] = these_nodes + those_nodes
-            if this_name is not None:
-                self.backrefs_map.pop(this_name)
-
-        def p_nodes_or_nodes(p):
-            """
-            named_nodes : named_nodes or_nodes
-            """
-            (these_nodes, this_name), (those_nodes, that_name) = p[1], p[2]
-            p[0] = (these_nodes + those_nodes, that_name)
-            if that_name is not None:
-                self.backrefs_map[that_name] = these_nodes + those_nodes
-            if this_name is not None:
-                self.backrefs_map.pop(this_name)
+            nodes = p[1][0]
+            name = p[3]
+            p[0] = (nodes, name)
+            self.backrefs_map[name] = list(p[1][0])
 
         # }}}
         # 2. Chain description
@@ -868,9 +932,14 @@ class TregexPattern:
             """
             pattern : named_nodes
             """
-            p[0] = (p[1][0], self.backrefs_map)
+            p[0] = p[1][0]
 
-        # def p_error(p):
-        #     print(p)
+        def p_error(p):
+            if p:
+                print("Parsing Error near token '%s'" % p.value)
+            else:
+                print("Parsing Error at EOF")
+            # You can perform additional error handling or logging here if needed
+            raise SystemExit()
 
         return yacc.yacc(debug=True, start="pattern")

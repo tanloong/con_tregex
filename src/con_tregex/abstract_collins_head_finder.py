@@ -1,8 +1,8 @@
 from typing import List, Optional, Set, TYPE_CHECKING
-from .head_finder import HeadFinder
+from head_finder import HeadFinder
 
 if TYPE_CHECKING:
-    from .tree import Tree
+    from tree import Tree
 
 
 class AbstractCollinsHeadFinder(HeadFinder):

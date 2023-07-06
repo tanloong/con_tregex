@@ -3,7 +3,7 @@
 
 from typing import List, TYPE_CHECKING
 
-from .abstract_collins_head_finder import AbstractCollinsHeadFinder
+from abstract_collins_head_finder import AbstractCollinsHeadFinder
 
 if TYPE_CHECKING:
     from .tree import Tree

@@ -4,7 +4,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .tree import Tree
+    from tree import Tree
 
 
 class HeadFinder:

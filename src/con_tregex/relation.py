@@ -3,11 +3,11 @@
 
 from typing import Optional, TYPE_CHECKING
 
-from .collins_head_finder import CollinsHeadFinder
+from collins_head_finder import CollinsHeadFinder
 
 if TYPE_CHECKING:
-    from .head_finder import HeadFinder
-    from .tree import Tree
+    from head_finder import HeadFinder
+    from tree import Tree
 
 
 class Relation:
@@ -187,3 +187,20 @@ class Relation:
         cls, t1: "Tree", t2: "Tree", hf: Optional["HeadFinder"] = None
     ) -> bool:
         return cls.immediately_heads(t2, t1, hf)
+
+    @classmethod
+    def precedes(cls, t1: "Tree", t2: "Tree") -> bool:
+      return t1.right_edge <= t2.left_edge
+
+    @classmethod
+    def immediately_precedes(cls, t1: "Tree", t2: "Tree") -> bool:
+      return t1.right_edge == t2.left_edge
+
+    @classmethod
+    def follows(cls, t1: "Tree", t2: "Tree") -> bool:
+      return t2.right_edge <= t1.left_edge
+
+    @classmethod
+    def immediately_follows(cls, t1: "Tree", t2: "Tree") -> bool:
+      return t2.right_edge == t1.left_edge
+

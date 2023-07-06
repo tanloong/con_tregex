@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import time
+import tracemalloc
 from unittest import TestCase
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
@@ -29,6 +30,7 @@ class BaseTmpl(TestCase):
         logging.info(f"{self.id()} start")
         self.stdout = io.StringIO()
         self.stdout_orig, sys.stdout = sys.stdout, self.stdout
+        tracemalloc.start()
 
     def tearDown(self):
         sys.stdout = self.stdout_orig

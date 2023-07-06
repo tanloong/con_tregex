@@ -10,6 +10,7 @@ clean:
 	rm -rf *.egg-info
 	rm -rf htmlcov
 	rm -rf coverage.xml
+	rm -rf src/parser.out
 	pip uninstall -y tregex || true
 
 build:
