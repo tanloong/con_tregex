@@ -4,8 +4,10 @@ import logging
 import os
 import sys
 import time
-import tracemalloc
+# import tracemalloc
 from unittest import TestCase
+
+from pytregex.tree import Tree
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 text = "There was no possibility of taking a walk that day."
@@ -30,7 +32,7 @@ class BaseTmpl(TestCase):
         logging.info(f"{self.id()} start")
         self.stdout = io.StringIO()
         self.stdout_orig, sys.stdout = sys.stdout, self.stdout
-        tracemalloc.start()
+        # tracemalloc.start()
 
     def tearDown(self):
         sys.stdout = self.stdout_orig

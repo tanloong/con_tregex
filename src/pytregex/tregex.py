@@ -747,7 +747,15 @@ class TregexPattern:
     def findall(self, tree_string: str) -> tuple:
         trees = Tree.from_string(tree_string)
         parser = self.make_parser(trees)
+        self._reset_lexer_state()
         return parser.parse(lexer=self.lexer)
+
+    def _reset_lexer_state(self):
+        """
+        reset lexer.lexpos to make the lexer reusable
+        https://github.com/dabeaz/ply/blob/master/doc/ply.md#internal-lexer-state
+        """
+        self.lexer.lexpos = 0
 
     def make_parser(self, trees: List[Tree]):
         tokens = self.tokens
@@ -841,6 +849,13 @@ class TregexPattern:
             name = p[3]
             p[0] = (nodes, name)
             self.backrefs_map[name] = list(p[1][0])
+
+        # node enclosed by parentheses
+        def p_lparen_named_nodes_rparen(p):
+            """
+            named_nodes : LPAREN named_nodes RPAREN
+            """
+            p[0] = p[2]
 
         # }}}
         # 2. Chain description
@@ -942,12 +957,6 @@ class TregexPattern:
 
             p[0] = res
 
-        def p_lparen_nodes_rparen(p):
-            """
-            named_nodes : LPAREN named_nodes RPAREN
-            """
-            p[0] = p[2]
-
         def p_nodes(p):
             """
             pattern : named_nodes
@@ -962,4 +971,4 @@ class TregexPattern:
             # You can perform additional error handling or logging here if needed
             raise SystemExit()
 
-        return yacc.yacc(debug=True, start="pattern")
+        return yacc.yacc(debug=False, start="pattern")
