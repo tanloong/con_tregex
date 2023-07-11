@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding=utf-8 -*-
 
-from typing import Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 from collins_head_finder import CollinsHeadFinder
 
@@ -210,3 +210,52 @@ class Relation:
     @classmethod
     def ancestor_of_leaf(cls, t1: "Tree", t2: "Tree") -> bool:
         return t1 is not t2 and t2.is_leaf and Relation.dominates(t1, t2)
+
+    @classmethod
+    def unbroken_category_dominates(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
+        def path_match_node(node: "Tree") -> bool:
+            nonlocal arg
+            return node in arg
+
+        for kid in t1.children:
+            if kid is t2:
+                return True
+            else:
+                if path_match_node(kid) and Relation.unbroken_category_dominates(kid, t2, arg):
+                    return True
+        return False
+
+    @classmethod
+    def unbroken_category_is_dominated_by(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
+        return Relation.unbroken_category_dominates(t2, t1, arg)
+
+    @classmethod
+    def unbroken_category_precedes(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
+        def path_match_node(node: "Tree") -> bool:
+            nonlocal arg
+            return node in arg
+        if t1.parent is None: # if t1 is root
+            return False
+
+        parent = t1.parent
+        i = t1.get_sister_index() # if t1 is not root, i won't be None, no need to check whether i is None
+        while i == (parent.num_children -1) and parent.parent is not None:
+            t1 = parent
+            parent = parent.parent
+            i = t1.get_sister_index()
+
+        if (i+1) < parent.num_children:
+            following_node = parent.children[i+1]
+        else:
+            return False
+
+        if following_node is t2:
+            return True
+        else:
+            if path_match_node(following_node) and Relation.unbroken_category_precedes(following_node, t2, arg):
+                return True
+        return False
+
+    @classmethod
+    def unbroken_category_follows(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
+        return Relation.unbroken_category_precedes(t2, t1, arg)

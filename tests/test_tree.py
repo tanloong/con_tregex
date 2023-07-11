@@ -95,14 +95,14 @@ class TestTree(BaseTmpl):
 
     def test_sister_index(self):
         tree = Tree()  # label=None, children=[], parent=None
-        self.assertIsNone(tree.get_sister_index())
+        self.assertEqual(-1, tree.get_sister_index())
 
         self.assertEqual(self.tree[0].get_sister_index(), 0)
         self.assertEqual(self.tree[-1].get_sister_index(), len(self.tree.children) - 1)
 
         tree_S = Tree("S", children=[Tree("NP"), Tree("VP")])
         tree_VP = tree_S.children.pop()
-        self.assertRaises(ValueError, tree_VP.get_sister_index)
+        self.assertEqual(-1, tree_VP.get_sister_index())
 
     def test_is_leaf(self):
         tree = Tree()

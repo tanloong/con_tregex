@@ -34,7 +34,7 @@ class TestTregex(BaseTmpl):
         )
 
         self.assertTrue(tregex1.findall(tree_string))
-        #TODO
+        # TODO
         # self.assertTrue(tregex2.findall(tree_string))
         # self.assertTrue(tregex3.findall(tree_string))
 
@@ -154,7 +154,7 @@ class TestTregex(BaseTmpl):
         self.run_test(pattern, "(a (foo 1) (foo 2))", "(foo 1)", "(foo 2)")
         self.run_test(pattern, "(a (foo 1))")
 
-        #TODO
+        # TODO
         # pattern = TregexPattern("foo $ foo=a")
         # tree = Tree.from_string("(a (foo 1) (foo 2) (foo 3))")
         # matcher = pattern.findall(tree)
@@ -469,6 +469,38 @@ class TestTregex(BaseTmpl):
         self.run_test("bar >>: foo", "(a (foo (b (bar))))", "(bar)")
         self.run_test("bar >>: foo", "(a (foo (bar)))", "(bar)")
 
+    def test_PrecedesDescribedChain(self):
+        self.run_test("DT .+(JJ) NN", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(DT the)")
+        self.run_test("DT .+(@JJ) /^NN/", "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))", "(DT the)")
+        self.run_test("NN ,+(JJ) DT", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(NN house)")
+        self.run_test("NNS ,+(@JJ) /^DT/", "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))", "(NNS houses)")
+        self.run_test("NNS ,+(/^(JJ|DT).*$/) PDT", "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))", "(NNS houses)")
+        self.run_test("NNS ,+(@JJ) JJ", "(NP (PDT both) (DT the) (JJ large) (JJ-COLOUR green) (NNS houses))", "(NNS houses)")
+
+    def test_DominateDescribedChain(self):
+        self.run_test("foo <+(bar) baz", "(a (foo (baz)))", "(foo (baz))")
+        self.run_test("foo <+(bar) baz", "(a (foo (bar (baz))))", "(foo (bar (baz)))")
+        self.run_test("foo <+(bar) baz", "(a (foo (bar (bar (baz)))))",
+        "(foo (bar (bar (baz))))")
+        self.run_test("foo <+(bar) baz", "(a (foo (bif (baz))))")
+        self.run_test("foo <+(!bif) baz", "(a (foo (bif (baz))))")
+        self.run_test("foo <+(!bif) baz", "(a (foo (bar (baz))))", "(foo (bar (baz)))")
+        self.run_test("foo <+(/b/) baz", "(a (foo (bif (baz))))", "(foo (bif (baz)))")
+        self.run_test("foo <+(/b/) baz", "(a (foo (bar (bif (baz)))))",
+        "(foo (bar (bif (baz))))")
+        self.run_test("foo <+(bar) baz", "(a (foo (bar (blah 1) (bar (baz)))))",
+        "(foo (bar (blah 1) (bar (baz))))")
+
+        self.run_test("baz >+(bar) foo", "(a (foo (baz)))", "(baz)")
+        self.run_test("baz >+(bar) foo", "(a (foo (bar (baz))))", "(baz)")
+        self.run_test("baz >+(bar) foo", "(a (foo (bar (bar (baz)))))", "(baz)")
+        self.run_test("baz >+(bar) foo", "(a (foo (bif (baz))))")
+        self.run_test("baz >+(!bif) foo", "(a (foo (bif (baz))))")
+        self.run_test("baz >+(!bif) foo", "(a (foo (bar (baz))))", "(baz)")
+        self.run_test("baz >+(/b/) foo", "(a (foo (bif (baz))))", "(baz)")
+        self.run_test("baz >+(/b/) foo", "(a (foo (bar (bif (baz)))))", "(baz)")
+        self.run_test("baz >+(bar) foo", "(a (foo (bar (blah 1) (bar (baz)))))", "(baz)")
+
     def test_SegmentedAndEqualsExpressions(self):
         self.run_test("foo : bar", "(a (foo) (bar))", "(foo)")
         self.run_test("foo : bar", "(a (foo))")
@@ -593,7 +625,7 @@ class TestTregex(BaseTmpl):
             ),
         ]
 
-        #TODO
+        # TODO
         # pattern = "WHADVP=whadvp > VP $+ /[A-Z]*/=last ![$++ (PP < NP)]"
         # self.run_test(pattern, inputTrees[0], "(WHADVP (WRB How) (JJ long))")
         # self.run_test(pattern, inputTrees[1], "(WHADVP (WRB When))")
@@ -614,31 +646,81 @@ class TestTregex(BaseTmpl):
         self.run_test(pattern, inputTrees[2])
         self.run_test(pattern, inputTrees[3])
         self.run_test(pattern, inputTrees[4], "(PP (IN in) (NP (NNP Australia)))")
+
     def test_HeadOfPhrase(self):
-        self.run_test("NP <# NNS", "(NP (NN work) (NNS practices))", "(NP (NN work) (NNS practices))")
-        self.run_test("NP <# NN", "(NP (NN work) (NNS practices))"); # should have no results
-        self.run_test("NP <<# NNS",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))",
-        "(NP (NN work) (NNS practices))")
-        self.run_test("NP !<# NNS <<# NNS",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))")
-        self.run_test("NP !<# NNP <<# NNP",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))"); # no results
-        self.run_test("NNS ># NP",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))",
-        "(NNS practices)")
-        self.run_test("NNS ># (NP < PP)",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))"); # no results
-        self.run_test("NNS >># (NP < PP)",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))",
-        "(NNS practices)")
-        self.run_test("NP <<# /^NN/",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))",
-        "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP Soviet) (NNP Union))))",
-        "(NP (NN work) (NNS practices))",
-        "(NP (DT the) (JJ former) (NNP Soviet) (NNP Union)))")
+        self.run_test(
+            "NP <# NNS", "(NP (NN work) (NNS practices))", "(NP (NN work) (NNS practices))"
+        )
+        self.run_test("NP <# NN", "(NP (NN work) (NNS practices))")
+        # should have no results
+        self.run_test(
+            "NP <<# NNS",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            "(NP (NN work) (NNS practices))",
+        )
+        self.run_test(
+            "NP !<# NNS <<# NNS",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+        )
+        self.run_test(
+            "NP !<# NNP <<# NNP",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+        )
+        # no results
+        self.run_test(
+            "NNS ># NP",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            "(NNS practices)",
+        )
+        self.run_test(
+            "NNS ># (NP < PP)",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+        )
+        # no results
+        self.run_test(
+            "NNS >># (NP < PP)",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            "(NNS practices)",
+        )
+        self.run_test(
+            "NP <<# /^NN/",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            "(NP (NN work) (NNS practices))",
+            "(NP (DT the) (JJ former) (NNP Soviet) (NNP Union)))",
+        )
 
     def test_Chinese(self):
         """
@@ -660,7 +742,9 @@ class TestTregex(BaseTmpl):
         self.run_test("A <= A", "(A (A 1) (B 2))", "(A (A 1) (B 2))", "(A (A 1) (B 2))", "(A 1)")
         # This is the kind of expression where this relation can be useful
         self.run_test("A <= (A < B)", "(A (A (B 1)))", "(A (A (B 1)))", "(A (B 1))")
-        self.run_test("A <= (A < B)", "(A (A (B 1)) (A (C 2)))", "(A (A (B 1)) (A (C 2)))", "(A (B 1))")
+        self.run_test(
+            "A <= (A < B)", "(A (A (B 1)) (A (C 2)))", "(A (A (B 1)) (A (C 2)))", "(A (B 1))"
+        )
         self.run_test("A <= (A < B)", "(A (A (C 2)))")
 
     def test_RootDisjunction(self):
@@ -672,23 +756,29 @@ class TestTregex(BaseTmpl):
         """
         self.run_test("A | B", "(A (B 1))", "(A (B 1))", "(B 1)")
 
-        # TODO
-        # self.run_test("(A) | (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
+        self.run_test("(A) | (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
+        self.run_test("(A|C) | (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
 
         self.run_test("A < B | A < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
 
         self.run_test("A < B | B < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
         self.run_test("A < B | B < C", "(A (B (C 1)) (C 2))", "(A (B (C 1)) (C 2))", "(B (C 1))")
 
-        self.run_test("A | B | C", "(A (B (C 1)) (C 2))", "(A (B (C 1)) (C 2))", "(B (C 1))", "(C 1)", "(C 2)")
+        self.run_test(
+            "A | B | C",
+            "(A (B (C 1)) (C 2))",
+            "(A (B (C 1)) (C 2))",
+            "(B (C 1))",
+            "(C 1)",
+            "(C 2)",
+        )
 
         # The binding of the | should look like this:
         # A ( (< B) | (< C) )
 
-        # TODO
-        # self.run_test("A < B | < C", "(A (B 1))", "(A (B 1))")
-        # self.run_test("A < B | < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
-        # self.run_test("A < B | < C", "(B (C 1))")
+        self.run_test("A < B || < C", "(A (B 1))", "(A (B 1))")
+        self.run_test("A < B || < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
+        self.run_test("A < B || < C", "(B (C 1))")
 
     def run_test(
         self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str

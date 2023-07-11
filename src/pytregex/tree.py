@@ -306,13 +306,13 @@ class Tree:
         else:
             raise RuntimeError("Tree is not a descendant of root.")
 
-    def get_sister_index(self) -> Optional[int]:
+    def get_sister_index(self) -> int:
         if self.parent is None:
-            return None
+            return -1
         for i, child in enumerate(self.parent.children):
             if child is self:
                 return i
-        raise ValueError("cannot find self in self.parent.children")
+        return -1
 
     def set_label(self, label: str) -> None:
         if isinstance(label, str):

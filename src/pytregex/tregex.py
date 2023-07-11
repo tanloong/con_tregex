@@ -620,6 +620,66 @@ class TregexMatcher(TregexMatcherBase):  # {{{
         )
 
     @classmethod
+    def unbroken_category_dominates(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+        arg: List[Tree],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.unbroken_category_dominates(this_node, that_node, arg),
+        )
+
+    @classmethod
+    def unbroken_category_is_dominated_by(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+        arg: List[Tree],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.unbroken_category_is_dominated_by(this_node, that_node, arg),
+        )
+
+    @classmethod
+    def unbroken_category_precedes(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+        arg: List[Tree],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.unbroken_category_precedes(this_node, that_node, arg),
+        )
+
+    @classmethod
+    def unbroken_category_follows(
+        cls,
+        these: NAMED_NODES,
+        those: NAMED_NODES,
+        modifier: Optional[str],
+        arg: List[Tree],
+    ) -> Tuple[NAMED_NODES, dict]:
+        return cls.match_condition(
+            these,
+            those,
+            modifier,
+            lambda this_node, that_node: Relation.unbroken_category_follows(this_node, that_node, arg),
+        )
+
+    @classmethod
     def and_(
         cls,
         these: NAMED_NODES,
@@ -629,9 +689,9 @@ class TregexMatcher(TregexMatcherBase):  # {{{
         :and_conditions: a tuple of (func, those_nodes, is_negate), func is a TregexMatcher method, e.g, TregexMatcher.parent_of
         """
         backrefs_map = {}
-        for func, those, modifier in and_conditions:
+        for func, those, modifier,*arg in and_conditions:
             assert modifier in (None, "!", "?")
-            these, backrefs_map = func(these, those, modifier)
+            these, backrefs_map = func(these, those, modifier, *arg)
             if not these[0]:
                 break
         return (these, backrefs_map)
@@ -642,8 +702,8 @@ class TregexPattern:
         "ID",
         "REGEX",
         "BLANK",
+        "REL_W_ARG",
         "RELATION",
-        "REL_W_STR_ARG",
         "NEGATION",
         "OPTIONAL",
         "AND",
@@ -657,7 +717,7 @@ class TregexPattern:
         "AT",
         "NUMBER",
     ]
-    # tokens = ['NUMBER', 'VARNAME',]
+    # tokens = ['VARNAME',]
 
     t_BLANK = r"__"
 
@@ -703,24 +763,21 @@ class TregexPattern:
         ".": TregexMatcher.immediately_precedes,
         ",": TregexMatcher.immediately_follows,
         "<<<": TregexMatcher.ancestor_of_leaf,
-# | < REL_W_STR_ARG: "<+" | ">+" | ".+" | ",+" >
     }
-    REL_W_STR_ARG_MAP = {
-        "<+": "",
-        ">+": "",
-        ".+": "",
-        ",+": "",
-        # "<+": TregexMatcher....,
-        # ">+": TregexMatcher....,
-        # ".+": TregexMatcher....,
-        # ",+": TregexMatcher....,
+
+    REL_W_ARG_MAP = {
+        "<+": TregexMatcher.unbroken_category_dominates,
+        ">+": TregexMatcher.unbroken_category_is_dominated_by,
+        ".+": TregexMatcher.unbroken_category_precedes,
+        ",+": TregexMatcher.unbroken_category_follows,
             }
     # make sure long relations are checked first, or otherwise `>>` might
     # be tokenized as two `>`s.
     rels = sorted(RELATION_MAP.keys(), key=len, reverse=True)
-    t_RELATION = "|".join(map(re.escape, rels))
-    rels_w_str_arg = sorted(REL_W_STR_ARG_MAP.keys(), key=len, reverse=True)
-    t_REL_W_STR_ARG = "|".join(map(re.escape, rels_w_str_arg))
+    # add negative lookahead assertion to ensure ">+" is seen as REL_W_ARG instead of RELATION(">") and ID("+")
+    t_RELATION = r"(?:" + "|".join(map(re.escape, rels)) + r")(?!\+)"
+    rels_w_arg = sorted(REL_W_ARG_MAP.keys(), key=len, reverse=True)
+    t_REL_W_ARG = "|".join(map(re.escape, rels_w_arg))
 
     t_NEGATION = r"!"
     t_OPTIONAL = r"\?"
@@ -734,13 +791,8 @@ class TregexPattern:
     t_EQUAL = r"="
     t_AT = r"@"
     t_NUMBER = r"-?[0-9]+"
+    t_ID = r"[^ 0-9\n\r(/|@!#&)=?[\]><~_.,$:{};][^ \n\r(/|@!#&)=?[\]><~.$:]*"
     t_ignore = " \r\t"
-
-    def t_ID(self, t):
-        r"[^ 0-9\n\r(/|@!#&)=?[\]><~_.,$:{};][^ \n\r(/|@!#&)=?[\]><~.$:]*"
-        # borrowed from Stanford Tregex:
-        # https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/TregexParser.jj#L66
-        return t
 
     def t_REGEX(self, t):
         r"/[^/\n\r]*/[ix]*"
@@ -903,34 +955,69 @@ class TregexPattern:
         # 2. Chain description
         def p_relation(p):
             """
-            reduced_rel : RELATION
+            reduced_relation : RELATION
             """
-            logging.debug("following rule: reduced_rel -> RELATION")
+            logging.debug("following rule: reduced_relation -> RELATION")
             p[0] = (p[1], None)
 
         def p_negation_relation(p):
             """
-            reduced_rel : NEGATION RELATION
+            reduced_relation : NEGATION RELATION
             """
-            logging.debug("following rule: reduced_rel -> NEGATION RELATION")
+            logging.debug("following rule: reduced_relation -> NEGATION RELATION")
             p[0] = (p[2], "!")
 
         def p_optional_relation(p):
             """
-            reduced_rel : OPTIONAL RELATION
+            reduced_relation : OPTIONAL RELATION
             """
-            logging.debug("following rule: reduced_rel -> OPTIONAL RELATION")
+            logging.debug("following rule: reduced_relation -> OPTIONAL RELATION")
             p[0] = (p[2], "?")
 
-        def p_reduced_rel_node_obj_list(p):
+        def p_reduced_relation_node_obj_list(p):
             """
-            and_conditions : reduced_rel node_obj_list %prec IMAGINE
+            and_conditions : reduced_relation node_obj_list %prec IMAGINE
             """
-            logging.debug("following rule: and_conditions -> reduced_rel node_obj_list")
+            logging.debug("following rule: and_conditions -> reduced_relation node_obj_list")
             # %prec IMAGINE: https://github.com/dabeaz/ply/issues/215
             (rel, modifier), those_nodes = p[1:]
             p[0] = ((self.RELATION_MAP[rel], those_nodes, modifier),)
 
+        # REL_W_ARG
+        def p_rel_w_arg_lparen_node_obj_list_rparen(p):
+            """
+            reduced_rel_w_arg : REL_W_ARG LPAREN node_obj_list RPAREN
+            """
+            logging.debug("following rule: reduced_rel_w_arg -> REL_W_ARG LPAREN node_obj_list RPAREN")
+            # modifier=None, arg=p[3][0]
+            p[0] = (p[1], None, p[3][0])
+
+        def p_negation_rel_w_arg_lparen_node_obj_list_rparen(p):
+            """
+            reduced_rel_w_arg : NEGATION REL_W_ARG LPAREN node_obj_list RPAREN
+            """
+            logging.debug("following rule: reduced_rel_w_arg -> NEGATION REL_W_ARG LPAREN node_obj_list RPAREN")
+            # modifier=None, arg=p[3]
+            p[0] = (p[2], "!", p[4][0])
+
+        def p_optional_rel_w_arg_lparen_node_obj_list_rparen(p):
+            """
+            reduced_rel_w_arg : OPTIONAL REL_W_ARG LPAREN node_obj_list RPAREN
+            """
+            logging.debug("following rule: reduced_rel_w_arg -> OPTIONAL REL_W_ARG LPAREN node_obj_list RPAREN")
+            # modifier=None, arg=p[3]
+            p[0] = (p[2], "?", p[4][0])
+
+        def p_reduced_rel_w_arg_node_obj_list(p):
+            """
+            and_conditions : reduced_rel_w_arg node_obj_list %prec IMAGINE
+            """
+            logging.debug("following rule: and_conditions -> reduced_rel_w_arg node_obj_list %prec IMAGINE")
+            # %prec IMAGINE: https://github.com/dabeaz/ply/issues/215
+            (rel_w_arg, modifier, arg), those_nodes = p[1:]
+            p[0] = ((self.REL_W_ARG_MAP[rel_w_arg], those_nodes, modifier, arg),)
+
+        # --------------------------------------------------------
         def p_and_and_conditions(p):
             """
             and_conditions : AND and_conditions
@@ -1006,12 +1093,6 @@ class TregexPattern:
             """
             logging.debug("following rule: pattern -> node_obj_list")
             p[0] = p[1][0]
-
-        # REL_W_STR_ARG
-        def p_rel_w_str_arg_lparen_node_obj_list_rparen(p):
-            """
-            ...
-            """
 
         def p_error(p):
             if p:
