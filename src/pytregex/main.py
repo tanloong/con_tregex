@@ -32,11 +32,34 @@ class TregexUI:
             default=False,
             help="Show version and exit.",
         )
+        args_parser.add_argument(
+            "--verbose",
+            action="store_true",
+            dest="is_verbose",
+            default=False,
+            help="Give verbose debugging output.",
+        )
+        args_parser.add_argument(
+            "--quiet",
+            action="store_true",
+            dest="is_quiet",
+            default=False,
+            help="Stop pytregex from print anything.",
+        )
         return args_parser
 
     def parse_args(self, argv: List[str]) -> TregexProcedureResult:
         options, ipath_list = self.args_parser.parse_known_args(argv[1:])
-        logging.basicConfig(format="%(message)s", level=logging.INFO)
+
+        if options.is_verbose and options.is_quiet:
+            return False, "--verbose and --quiet cannot be set at the same time"
+        if options.is_verbose:
+            logging_level = logging.DEBUG
+        elif options.is_quiet:
+            logging_level = logging.WARNING
+        else:
+            logging_level = logging.INFO
+        logging.basicConfig(format="%(message)s", level=logging_level)
 
         verified_ifile_list = []
         for path in ipath_list:
