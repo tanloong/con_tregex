@@ -106,7 +106,7 @@ class TregexMatcherBase:  # {{{
 
 
 # }}}
-class TregexMatcher(TregexMatcherBase):  # {{{
+class TregexMatcher(TregexMatcherBase):
     @classmethod
     def match_any(cls, trees: List[Tree]) -> Generator[Tree, Any, None]:
         for tree in trees:
@@ -117,15 +117,8 @@ class TregexMatcher(TregexMatcherBase):  # {{{
     def match_or_nodes(
         cls, trees: List[Tree], or_nodes: List[str], is_negate: bool = False
     ) -> Generator[Tree, Any, None]:
-        if not is_negate:
-
-            def condition_func(candidate, or_nodes) -> bool:
-                return candidate in or_nodes
-
-        else:
-
-            def condition_func(candidate, or_nodes) -> bool:
-                return candidate not in or_nodes
+        def condition_func(candidate, or_nodes) -> bool:
+            return (candidate in or_nodes) != is_negate
 
         if or_nodes[0] == "@":
             attr = "basic_category"
@@ -143,555 +136,32 @@ class TregexMatcher(TregexMatcherBase):  # {{{
         cls, trees: List[Tree], regex: str, is_negate: bool = False
     ) -> Generator[Tree, Any, None]:
         pattern = re.compile(regex)
-        if not is_negate:
-            for tree in trees:
-                for node in tree.preorder_iter():
-                    if node.label is None:
-                        continue
-                    if pattern.search(node.label) is not None:
+        for tree in trees:
+            for node in tree.preorder_iter():
+                if node.label is None:
+                    if is_negate:
                         yield node
-        else:
-            for tree in trees:
-                for node in tree.preorder_iter():
-                    if node.label is None:
-                        yield node
-                        continue
-                    if pattern.search(node.label) is None:
-                        yield node
+                    continue
 
-    @classmethod
-    def parent_of(
-        cls,
-        these: Tuple[List[Tree], str],
-        those: Tuple[List[Tree], str],
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.parent_of(this_node, that_node),
-        )
-
-    @classmethod
-    def child_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.child_of(this_node, that_node),
-        )
-
-    @classmethod
-    def dominates(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.dominates(this_node, that_node),
-        )
-
-    # }}}
-    @classmethod
-    def dominated_by(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.dominated_by(this_node, that_node),
-        )
-
-    @classmethod
-    def only_child_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.only_child_of(this_node, that_node),
-        )
-
-    @classmethod
-    def has_only_child(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.has_only_child(this_node, that_node),
-        )
-
-    @classmethod
-    def last_child_of_parent(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.last_child_of_parent(this_node, that_node),
-        )
-
-    @classmethod
-    def parent_of_last_child(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.parent_of_last_child(this_node, that_node),
-        )
-
-    @classmethod
-    def leftmost_child_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.leftmost_child_of(this_node, that_node),
-        )
-
-    @classmethod
-    def has_leftmost_child(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.has_leftmost_child(this_node, that_node),
-        )
-
-    @classmethod
-    def has_rightmost_descendant(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.has_rightmost_descendant(this_node, that_node),
-        )
-
-    @classmethod
-    def rightmost_descendant_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.rightmost_descendant_of(this_node, that_node),
-        )
-
-    @classmethod
-    def leftmost_descendant_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.leftmost_descendant_of(this_node, that_node),
-        )
-
-    @classmethod
-    def has_leftmost_descendant(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.has_leftmost_descendant(this_node, that_node),
-        )
-
-    @classmethod
-    def left_sister_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.left_sister_of(this_node, that_node),
-        )
-
-    @classmethod
-    def right_sister_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.right_sister_of(this_node, that_node),
-        )
-
-    @classmethod
-    def immediate_left_sister_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.immediate_left_sister_of(this_node, that_node),
-        )
-
-    @classmethod
-    def immediate_right_sister_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.immediate_right_sister_of(
-                this_node, that_node
-            ),
-        )
-
-    @classmethod
-    def sister_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.sister_of(this_node, that_node),
-        )
-
-    @classmethod
-    def equals(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.equals(this_node, that_node),
-        )
-
-    @classmethod
-    def parent_equals(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.parent_equals(this_node, that_node),
-        )
-
-    @classmethod
-    def unary_path_ancestor_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.unary_path_ancestor_of(this_node, that_node),
-        )
-
-    @classmethod
-    def unary_path_descedant_of(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.unary_path_descedant_of(this_node, that_node),
-        )
-
-    @classmethod
-    def pattern_splitter(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(these, those, modifier, lambda this_node, that_node: True)
-
-    @classmethod
-    def immediately_heads(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.immediately_heads(this_node, that_node),
-        )
-
-    @classmethod
-    def immediately_headed_by(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.immediately_headed_by(this_node, that_node),
-        )
-
-    @classmethod
-    def heads(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.heads(this_node, that_node),
-        )
-
-    @classmethod
-    def headed_by(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.headed_by(this_node, that_node),
-        )
-
-    @classmethod
-    def precedes(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.precedes(this_node, that_node),
-        )
-
-    @classmethod
-    def follows(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.follows(this_node, that_node),
-        )
-
-    @classmethod
-    def immediately_precedes(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.immediately_precedes(this_node, that_node),
-        )
-
-    @classmethod
-    def immediately_follows(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.immediately_follows(this_node, that_node),
-        )
-
-    @classmethod
-    def ancestor_of_leaf(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.ancestor_of_leaf(this_node, that_node),
-        )
-
-    @classmethod
-    def unbroken_category_dominates(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-        arg: List[Tree],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.unbroken_category_dominates(this_node, that_node, arg),
-        )
-
-    @classmethod
-    def unbroken_category_is_dominated_by(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-        arg: List[Tree],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.unbroken_category_is_dominated_by(this_node, that_node, arg),
-        )
-
-    @classmethod
-    def unbroken_category_precedes(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-        arg: List[Tree],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.unbroken_category_precedes(this_node, that_node, arg),
-        )
-
-    @classmethod
-    def unbroken_category_follows(
-        cls,
-        these: NAMED_NODES,
-        those: NAMED_NODES,
-        modifier: Optional[str],
-        arg: List[Tree],
-    ) -> Tuple[NAMED_NODES, dict]:
-        return cls.match_condition(
-            these,
-            those,
-            modifier,
-            lambda this_node, that_node: Relation.unbroken_category_follows(this_node, that_node, arg),
-        )
+                if (pattern.search(node.label) is None) == is_negate:
+                    yield node
 
     @classmethod
     def and_(
         cls,
         these: NAMED_NODES,
-        and_conditions: Tuple[Tuple[Callable, NAMED_NODES, Optional[str]]],
+        and_conditions: Tuple[Union[AND_CONDITION, AND_CONDITION_W_REL_ARG]],
     ) -> Tuple[NAMED_NODES, dict]:
-        """
-        :and_conditions: a tuple of (func, those_nodes, is_negate), func is a TregexMatcher method, e.g, TregexMatcher.parent_of
-        """
-        backrefs_map = {}
-        for func, those, modifier,*arg in and_conditions:
+        backrefs_map: Dict[str, list] = {}
+        for func, those, modifier, *arg in and_conditions:
             assert modifier in (None, "!", "?")
-            these, backrefs_map = func(these, those, modifier, *arg)
+            these, backrefs_map = cls.match_condition(
+                these,
+                those,
+                modifier,
+                lambda this_node, that_node: func(this_node, that_node, *arg),
+            )
+
             if not these[0]:
                 break
         return (these, backrefs_map)
@@ -722,55 +192,55 @@ class TregexPattern:
     t_BLANK = r"__"
 
     RELATION_MAP = {
-        "<": TregexMatcher.parent_of,
-        ">": TregexMatcher.child_of,
-        "<<": TregexMatcher.dominates,
-        ">>": TregexMatcher.dominated_by,
-        ">:": TregexMatcher.only_child_of,
-        "<:": TregexMatcher.has_only_child,
-        ">`": TregexMatcher.last_child_of_parent,
-        ">-": TregexMatcher.last_child_of_parent,
-        "<`": TregexMatcher.parent_of_last_child,
-        "<-": TregexMatcher.parent_of_last_child,
-        ">,": TregexMatcher.leftmost_child_of,
-        "<,": TregexMatcher.has_leftmost_child,
-        "<<`": TregexMatcher.has_rightmost_descendant,
-        "<<-": TregexMatcher.has_rightmost_descendant,
-        ">>`": TregexMatcher.rightmost_descendant_of,
-        ">>-": TregexMatcher.rightmost_descendant_of,
-        ">>,": TregexMatcher.leftmost_descendant_of,
-        "<<,": TregexMatcher.has_leftmost_descendant,
-        "$..": TregexMatcher.left_sister_of,
-        "$++": TregexMatcher.left_sister_of,
-        "$--": TregexMatcher.right_sister_of,
-        "$,,": TregexMatcher.right_sister_of,
-        "$.": TregexMatcher.immediate_left_sister_of,
-        "$+": TregexMatcher.immediate_left_sister_of,
-        "$-": TregexMatcher.immediate_right_sister_of,
-        "$,": TregexMatcher.immediate_right_sister_of,
-        "$": TregexMatcher.sister_of,
-        "==": TregexMatcher.equals,
-        "<=": TregexMatcher.parent_equals,
-        "<<:": TregexMatcher.unary_path_ancestor_of,
-        ">>:": TregexMatcher.unary_path_descedant_of,
-        ":": TregexMatcher.pattern_splitter,
-        ">#": TregexMatcher.immediately_heads,
-        "<#": TregexMatcher.immediately_headed_by,
-        ">>#": TregexMatcher.heads,
-        "<<#": TregexMatcher.headed_by,
-        "..": TregexMatcher.precedes,
-        ",,": TregexMatcher.follows,
-        ".": TregexMatcher.immediately_precedes,
-        ",": TregexMatcher.immediately_follows,
-        "<<<": TregexMatcher.ancestor_of_leaf,
+        "<": Relation.parent_of,
+        ">": Relation.child_of,
+        "<<": Relation.dominates,
+        ">>": Relation.dominated_by,
+        ">:": Relation.only_child_of,
+        "<:": Relation.has_only_child,
+        ">`": Relation.last_child_of_parent,
+        ">-": Relation.last_child_of_parent,
+        "<`": Relation.parent_of_last_child,
+        "<-": Relation.parent_of_last_child,
+        ">,": Relation.leftmost_child_of,
+        "<,": Relation.has_leftmost_child,
+        "<<`": Relation.has_rightmost_descendant,
+        "<<-": Relation.has_rightmost_descendant,
+        ">>`": Relation.rightmost_descendant_of,
+        ">>-": Relation.rightmost_descendant_of,
+        ">>,": Relation.leftmost_descendant_of,
+        "<<,": Relation.has_leftmost_descendant,
+        "$..": Relation.left_sister_of,
+        "$++": Relation.left_sister_of,
+        "$--": Relation.right_sister_of,
+        "$,,": Relation.right_sister_of,
+        "$.": Relation.immediate_left_sister_of,
+        "$+": Relation.immediate_left_sister_of,
+        "$-": Relation.immediate_right_sister_of,
+        "$,": Relation.immediate_right_sister_of,
+        "$": Relation.sister_of,
+        "==": Relation.equals,
+        "<=": Relation.parent_equals,
+        "<<:": Relation.unary_path_ancestor_of,
+        ">>:": Relation.unary_path_descedant_of,
+        ":": Relation.pattern_splitter,
+        ">#": Relation.immediately_heads,
+        "<#": Relation.immediately_headed_by,
+        ">>#": Relation.heads,
+        "<<#": Relation.headed_by,
+        "..": Relation.precedes,
+        ",,": Relation.follows,
+        ".": Relation.immediately_precedes,
+        ",": Relation.immediately_follows,
+        "<<<": Relation.ancestor_of_leaf,
     }
 
     REL_W_ARG_MAP = {
-        "<+": TregexMatcher.unbroken_category_dominates,
-        ">+": TregexMatcher.unbroken_category_is_dominated_by,
-        ".+": TregexMatcher.unbroken_category_precedes,
-        ",+": TregexMatcher.unbroken_category_follows,
-            }
+        "<+": Relation.unbroken_category_dominates,
+        ">+": Relation.unbroken_category_is_dominated_by,
+        ".+": Relation.unbroken_category_precedes,
+        ",+": Relation.unbroken_category_follows,
+    }
     # make sure long relations are checked first, or otherwise `>>` might
     # be tokenized as two `>`s.
     rels = sorted(RELATION_MAP.keys(), key=len, reverse=True)
