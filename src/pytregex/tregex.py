@@ -12,36 +12,35 @@ NAMED_NODES = Tuple[List[Tree], Optional[str]]
 MODIFIER = Optional[str]
 AND_CONDITION = Tuple[Callable, NAMED_NODES, MODIFIER]
 AND_CONDITION_W_REL_ARG = Tuple[Callable, NAMED_NODES, MODIFIER, List[Tree]]
+AND_CONDITIONS = Tuple[Union[AND_CONDITION, AND_CONDITION_W_REL_ARG]]
 
 
 class TregexMatcherBase:  # {{{
     @classmethod
     def match_condition(
         cls,
-        these: NAMED_NODES,
+        this_node: Tree,
+        this_name: Optional[str],
         those: NAMED_NODES,
         modifier: MODIFIER,
         condition_func: Callable,
-    ) -> Tuple[NAMED_NODES, dict]:
+    ) -> Tuple[int, dict]:
         if modifier is None:
-            res, backrefs_map = cls._exactly_match_condition(these, those, condition_func)
+            match_count, backrefs_map = cls._exactly_match_condition(this_node, this_name, those, condition_func)
         elif modifier == "!":
-            res = cls._not_match_condition(these, those, condition_func)
-            backrefs_map = {}
+            match_count, backrefs_map = cls._not_match_condition(this_node, those, condition_func)
         else:
-            res = these[0]
-            backrefs_map = cls._optionally_match_condition(these, those, condition_func)
-        this_name = these[1]
-        return ((res, this_name), backrefs_map)
+            match_count, backrefs_map = cls._optionally_match_condition(this_node, those, condition_func)
+        return (match_count, backrefs_map)
 
     @classmethod
     def _exactly_match_condition(
         cls,
-        these: NAMED_NODES,
+        this_node: Tree,
+        this_name: Optional[str],
         those: NAMED_NODES,
         condition_func: Callable[[Tree, Tree], bool],
-    ) -> Tuple[List[Tree], dict]:
-        these_nodes, this_name = these
+    ) -> Tuple[int, dict]:
         those_nodes, that_name = those
 
         backrefs_map: Dict[str, list] = {}
@@ -50,61 +49,49 @@ class TregexMatcherBase:  # {{{
         if that_name is not None:
             backrefs_map[that_name] = []
 
-        res = []
-        for this_node in these_nodes:
-            for that_node in those_nodes:
-                if condition_func(this_node, that_node):
-                    if this_name is not None:
-                        backrefs_map[this_name].append(this_node)
-                    if that_name is not None:
-                        backrefs_map[that_name].append(that_node)
-                    res.append(this_node)
+        match_count = 0
+        for that_node in those_nodes:
+            if condition_func(this_node, that_node):
+                if this_name is not None:
+                    backrefs_map[this_name].append(this_node)
+                if that_name is not None:
+                    backrefs_map[that_name].append(that_node)
+                match_count += 1
 
-        return (res, backrefs_map)
+        return (match_count, backrefs_map)
 
     @classmethod
     def _not_match_condition(
         cls,
-        these: NAMED_NODES,
+        this_node: Tree,
         those: NAMED_NODES,
         condition_func: Callable,
-    ) -> List[Tree]:
-        these_nodes, _ = these
+    ) -> Tuple[int, dict]:
         those_nodes, _ = those
 
-        res = []
-        for this_node in these_nodes:
-            if all(
-                map(
-                    lambda that_node, this_node=this_node: not condition_func(  # type:ignore
-                        this_node, that_node
-                    ),
-                    those_nodes,
-                )
-            ):
-                res.append(this_node)
-        return res
+        match_count = 0
+        if all(map(lambda that_node, this_node=this_node: not condition_func(this_node, that_node), those_nodes)):
+            match_count += 1
+        return (match_count, {})
 
     @classmethod
     def _optionally_match_condition(
         cls,
-        these: NAMED_NODES,
+        this_node: Tree,
         those: NAMED_NODES,
         condition_func: Callable[[Tree, Tree], bool],
-    ) -> dict:
-        these_nodes, this_name = these
+    ) -> Tuple[int, dict]:
         those_nodes, that_name = those
 
         if that_name is None:
-            return {}
+            return (1,{})
 
         backrefs_map: Dict[str, list] = {}
         backrefs_map[that_name] = []
-        for this_node in these_nodes:
-            for that_node in those_nodes:
-                if condition_func(this_node, that_node):
-                    backrefs_map[that_name].append(that_node)
-        return backrefs_map
+        for that_node in those_nodes:
+            if condition_func(this_node, that_node):
+                backrefs_map[that_name].append(that_node)
+        return (1, backrefs_map)
 
 
 # }}}
@@ -151,23 +138,49 @@ class TregexMatcher(TregexMatcherBase):
     @classmethod
     def and_(
         cls,
-        these: NAMED_NODES,
+        this_node: Tree,
+        this_name: Optional[str],
         and_conditions: Tuple[Union[AND_CONDITION, AND_CONDITION_W_REL_ARG]],
-    ) -> Tuple[NAMED_NODES, dict]:
+    ) -> Tuple[int, dict]:
+        match_count = 0
         backrefs_map: Dict[str, list] = {}
+
         for func, those, modifier, *arg in and_conditions:
             assert modifier in (None, "!", "?")
-            these, backrefs_map = cls.match_condition(
-                these,
+            match_count_cur_cond, backrefs_map_cur_cond = cls.match_condition(
+                this_node,
+                this_name,
                 those,
                 modifier,
                 lambda this_node, that_node: func(this_node, that_node, *arg),
             )
+            if match_count_cur_cond == 0:
+                return (0, {})
+            
+            match_count += match_count_cur_cond
+            for name,node_list in backrefs_map_cur_cond.items():
+                backrefs_map[name] = backrefs_map.get(name,[]) + node_list
 
-            if not these[0]:
-                break
-        return (these, backrefs_map)
+        return (match_count, backrefs_map)
 
+    @classmethod
+    def or_(
+        cls,
+        these_nodes: List[Tree],
+        this_name: Optional[str],
+        or_conditions: Tuple[AND_CONDITIONS],
+    ) -> Tuple[List[Tree], dict]:
+        res:List[Tree] = []
+        backrefs_map:Dict[str, list] = {}
+
+        for this_node in these_nodes:
+            for and_conditions in or_conditions:
+                match_count, backrefs_map_cur_conds = cls.and_(this_node, this_name, and_conditions)
+
+                res += [this_node for _ in range(match_count)]
+                for name,node_list in backrefs_map_cur_conds.items():
+                    backrefs_map[name] = backrefs_map.get(name,[]) + node_list
+        return (res, backrefs_map)
 
 class TregexPattern:
     tokens = [  # {{{
@@ -279,7 +292,7 @@ class TregexPattern:
         return t
 
     def t_error(self, t):
-        print("Tokenization error: Illegal character '%s'" % t.value[0])
+        logging.critical("Tokenization error: Illegal character '%s'" % t.value[0])
         raise SystemExit()
 
     def __init__(self, tregex_pattern: str):
@@ -419,8 +432,8 @@ class TregexPattern:
             node_obj_list : node_obj_list EQUAL ID
             """
             logging.debug("following rule: or_nodes -> or_nodes EQUAL ID")
-            name = p[3]
             nodes = p[1][0]
+            name = p[3]
             p[0] = (nodes, name)
             self.backrefs_map[name] = list(p[1][0])
 
@@ -554,20 +567,12 @@ class TregexPattern:
             node_obj_list : node_obj_list chain
             """
             logging.debug("following rule: node_obj_list -> node_obj_list chain")
-            these, or_conditions = p[1:]
-            res = ([], None)
-            for and_conditions in or_conditions:
-                nodes, backrefs_map = TregexMatcher.and_(these, and_conditions)
-                res = (res[0] + nodes[0], res[1])
+            (these_nodes, this_name), or_conditions = p[1:]
+            res, backrefs_map = TregexMatcher.or_(these_nodes, this_name, or_conditions)
+            for name,node_list in backrefs_map.items():
+                self.backrefs_map[name] = self.backrefs_map.get(name,[]) + node_list
 
-                this_name = these[1]
-                for name in backrefs_map:
-                    if name == this_name:
-                        self.backrefs_map[this_name] += backrefs_map[name]
-                    else:
-                        self.backrefs_map[name] = backrefs_map[name]
-
-            p[0] = res
+            p[0] = (res, this_name)
 
         def p_nodes(p):
             """
