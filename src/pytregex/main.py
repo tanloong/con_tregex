@@ -23,8 +23,9 @@ class TregexUI:
 
     def create_args_parser(self) -> argparse.ArgumentParser:
         args_parser = argparse.ArgumentParser(
-            prog="pytregex", formatter_class=argparse.RawDescriptionHelpFormatter
+            prog="pytregex", formatter_class=argparse.RawDescriptionHelpFormatter, add_help=False,
         )
+        args_parser.add_argument('--help', action='help', help='Show this help message and exit')
         args_parser.add_argument("pattern", help="Tregex pattern")
         args_parser.add_argument(
             "-filter",
@@ -32,6 +33,18 @@ class TregexUI:
             dest="is_stdin",
             default=False,
             help="read tree input from stdin",
+        )
+        args_parser.add_argument(
+            "-h",
+            metavar="<handle>",
+            action="extend",
+            nargs="+",
+            dest="handles",
+            help=(
+                "for each node-handle specified, the node matched and given that handle will be"
+                " printed. Multiple nodes can be printed by using this option multiple times on"
+                " a single command line."
+            ),
         )
         args_parser.add_argument(
             "--version",
@@ -56,7 +69,13 @@ class TregexUI:
         return args_parser
 
     def parse_args(self, argv: List[str]) -> TregexProcedureResult:
-        options, ipath_list = self.args_parser.parse_known_args(argv[1:])
+        idx: Optional[int] = None
+        if "--" in argv[1:]:
+            idx = argv.index("--")
+        if idx is not None:
+            options, ipath_list = self.args_parser.parse_args(argv[1:idx]), argv[idx + 1 :]
+        else:
+            options, ipath_list = self.args_parser.parse_known_args(argv[1:])
 
         if options.is_verbose and options.is_quiet:
             return False, "--verbose and --quiet cannot be set at the same time"
@@ -113,8 +132,23 @@ class TregexUI:
 
         pattern = TregexPattern(self.options.pattern)
         matches = pattern.findall(tree_string)
-        for m in matches:
-            sys.stdout.write(f"{m.to_string()}\n")
+
+        if self.options.handles:
+            for handle in self.options.handles:
+                try:
+                    handled_nodes = pattern.backrefs_map[handle]
+                except KeyError:
+                    logging.warning(
+                        f'Error!!  There is no matched node "{handle}"!  Did you specify such a'
+                        " label in the pattern?"
+                    )
+                    continue
+                for node in handled_nodes:
+                    sys.stdout.write(f"{node}\n")
+        else:
+            for m in matches:
+                sys.stdout.write(f"{m}\n")
+        logging.info(f"There are {len(matches)} matches in total.")
 
         return True, None
 
