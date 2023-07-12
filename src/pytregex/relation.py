@@ -212,50 +212,54 @@ class Relation:
         return t1 is not t2 and t2.is_leaf and Relation.dominates(t1, t2)
 
     @classmethod
-    def unbroken_category_dominates(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
-        def path_match_node(node: "Tree") -> bool:
-            nonlocal arg
-            return node in arg
-
+    def unbroken_category_dominates(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
         for kid in t1.children:
             if kid is t2:
                 return True
             else:
-                if path_match_node(kid) and Relation.unbroken_category_dominates(kid, t2, arg):
+                if kid in rel_arg and Relation.unbroken_category_dominates(kid, t2, rel_arg):
                     return True
         return False
 
     @classmethod
-    def unbroken_category_is_dominated_by(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
-        return Relation.unbroken_category_dominates(t2, t1, arg)
+    def unbroken_category_is_dominated_by(
+        cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]
+    ) -> bool:
+        return Relation.unbroken_category_dominates(t2, t1, rel_arg)
 
     @classmethod
-    def unbroken_category_precedes(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
-        def path_match_node(node: "Tree") -> bool:
-            nonlocal arg
-            return node in arg
-        if t1.parent is None: # if t1 is root
+    def unbroken_category_precedes(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
+        if t1.parent is None:  # if t1 is root
             return False
 
         parent = t1.parent
-        i = t1.get_sister_index() # if t1 is not root, i won't be None, no need to check whether i is None
-        while i == (parent.num_children -1) and parent.parent is not None:
+        i = (
+            t1.get_sister_index()
+        )  # if t1 is not root, i won't be None, no need to check whether i is None
+        while i == (parent.num_children - 1) and parent.parent is not None:
             t1 = parent
             parent = parent.parent
             i = t1.get_sister_index()
 
-        if (i+1) < parent.num_children:
-            following_node = parent.children[i+1]
+        # ensure i > 0 because Tree.get_sister_index() might return -1
+        if i > 0 and (i + 1) < parent.num_children:
+            following_node = parent.children[i + 1]
         else:
             return False
 
         if following_node is t2:
             return True
         else:
-            if path_match_node(following_node) and Relation.unbroken_category_precedes(following_node, t2, arg):
+            if following_node in rel_arg and Relation.unbroken_category_precedes(
+                following_node, t2, rel_arg
+            ):
                 return True
         return False
 
     @classmethod
-    def unbroken_category_follows(cls, t1: "Tree", t2: "Tree", arg: List["Tree"]) -> bool:
-        return Relation.unbroken_category_precedes(t2, t1, arg)
+    def unbroken_category_follows(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
+        return Relation.unbroken_category_precedes(t2, t1, rel_arg)
+
+    @classmethod
+    def pattern_splitter(cls, t1: "Tree", t2: "Tree") -> bool:
+        return True

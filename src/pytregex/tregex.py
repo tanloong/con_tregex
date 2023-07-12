@@ -2,14 +2,16 @@
 # https://github.com/stanfordnlp/CoreNLP/blob/efc66a9cf49fecba219dfaa4025315ad966285cc/test/src/edu/stanford/nlp/trees/tregex/TregexTest.java
 import logging
 import re
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 
 from ply import lex, yacc
-
 from relation import Relation
 from tree import Tree
 
 NAMED_NODES = Tuple[List[Tree], Optional[str]]
+MODIFIER = Optional[str]
+AND_CONDITION = Tuple[Callable, NAMED_NODES, MODIFIER]
+AND_CONDITION_W_REL_ARG = Tuple[Callable, NAMED_NODES, MODIFIER, List[Tree]]
 
 
 class TregexMatcherBase:  # {{{
@@ -18,7 +20,7 @@ class TregexMatcherBase:  # {{{
         cls,
         these: NAMED_NODES,
         those: NAMED_NODES,
-        modifier: Optional[str],
+        modifier: MODIFIER,
         condition_func: Callable,
     ) -> Tuple[NAMED_NODES, dict]:
         if modifier is None:
@@ -277,7 +279,7 @@ class TregexPattern:
         return t
 
     def t_error(self, t):
-        print("Tokenization Error: Illegal character '%s'" % t.value[0])
+        print("Tokenization error: Illegal character '%s'" % t.value[0])
         raise SystemExit()
 
     def __init__(self, tregex_pattern: str):
@@ -312,7 +314,7 @@ class TregexPattern:
             # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
             # ("left", "RELATION"),
-        )# }}}
+        )  # }}}
 
         # 1. Label description
         # 1.1 simple label description
@@ -338,7 +340,7 @@ class TregexPattern:
             these_nodes = p[1][0]
             those_nodes = p[2][0]
             that_name = p[2][1]
-            p[0] = (these_nodes+those_nodes, that_name)
+            p[0] = (these_nodes + those_nodes, that_name)
 
         def p_at_or_nodes(p):
             """
@@ -458,7 +460,9 @@ class TregexPattern:
             """
             reduced_rel_w_arg : REL_W_ARG LPAREN node_obj_list RPAREN
             """
-            logging.debug("following rule: reduced_rel_w_arg -> REL_W_ARG LPAREN node_obj_list RPAREN")
+            logging.debug(
+                "following rule: reduced_rel_w_arg -> REL_W_ARG LPAREN node_obj_list RPAREN"
+            )
             # modifier=None, arg=p[3][0]
             p[0] = (p[1], None, p[3][0])
 
@@ -466,7 +470,10 @@ class TregexPattern:
             """
             reduced_rel_w_arg : NEGATION REL_W_ARG LPAREN node_obj_list RPAREN
             """
-            logging.debug("following rule: reduced_rel_w_arg -> NEGATION REL_W_ARG LPAREN node_obj_list RPAREN")
+            logging.debug(
+                "following rule: reduced_rel_w_arg -> NEGATION REL_W_ARG LPAREN node_obj_list"
+                " RPAREN"
+            )
             # modifier=None, arg=p[3]
             p[0] = (p[2], "!", p[4][0])
 
@@ -474,7 +481,10 @@ class TregexPattern:
             """
             reduced_rel_w_arg : OPTIONAL REL_W_ARG LPAREN node_obj_list RPAREN
             """
-            logging.debug("following rule: reduced_rel_w_arg -> OPTIONAL REL_W_ARG LPAREN node_obj_list RPAREN")
+            logging.debug(
+                "following rule: reduced_rel_w_arg -> OPTIONAL REL_W_ARG LPAREN node_obj_list"
+                " RPAREN"
+            )
             # modifier=None, arg=p[3]
             p[0] = (p[2], "?", p[4][0])
 
@@ -482,7 +492,9 @@ class TregexPattern:
             """
             and_conditions : reduced_rel_w_arg node_obj_list %prec IMAGINE
             """
-            logging.debug("following rule: and_conditions -> reduced_rel_w_arg node_obj_list %prec IMAGINE")
+            logging.debug(
+                "following rule: and_conditions -> reduced_rel_w_arg node_obj_list %prec IMAGINE"
+            )
             # %prec IMAGINE: https://github.com/dabeaz/ply/issues/215
             (rel_w_arg, modifier, arg), those_nodes = p[1:]
             p[0] = ((self.REL_W_ARG_MAP[rel_w_arg], those_nodes, modifier, arg),)
@@ -566,10 +578,12 @@ class TregexPattern:
 
         def p_error(p):
             if p:
-                logging.critical(f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing Error at token '{p.value}'")
+                logging.critical(
+                    f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token"
+                    f" '{p.value}'"
+                )
             else:
                 logging.critical("Parsing Error at EOF")
-            # You can perform additional error handling or logging here if needed
             raise SystemExit()
 
         return yacc.yacc(debug=False, start="pattern")

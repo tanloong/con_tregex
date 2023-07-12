@@ -74,7 +74,7 @@ class TregexUI:
             if ipath_list:
                 return (
                     False,
-                    "When reading tree input from stdin, input files are unaccepted: \n\n{}\n"
+                    "Input files are unaccepted when reading tree input from stdin: \n\n{}"
                     .format("\n".join(ipath_list)),
                 )
             self.tree_string = sys.stdin.read()

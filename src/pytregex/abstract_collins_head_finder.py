@@ -12,7 +12,7 @@ class AbstractCollinsHeadFinder(HeadFinder):
     def __init__(self, *categoriesToAvoid) -> None:
         self.nonTerminalInfo: Optional[dict] = None
         self.pennPunctTags: Set[str] = {"''``", "-LRB-", "-RRB-", ".", ":", ","}
-        self.defaultRule = None
+        self.defaultRule: Optional[list] = None
 
         # automatically build defaultLeftRule, defaultRightRule
         if categoriesToAvoid:

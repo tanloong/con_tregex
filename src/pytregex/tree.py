@@ -259,6 +259,7 @@ class Tree:
         """
         note: return 0 for the leftmost node
         """
+        i = 0
 
         def left_edge_helper(t: "Tree", t1: "Tree") -> bool:
             nonlocal i
@@ -274,7 +275,6 @@ class Tree:
                         return True
                 return False
 
-        i = 0
         if left_edge_helper(self, self.root):
             return i
         else:
@@ -285,6 +285,7 @@ class Tree:
         """
         note: return 1 for the leftmost node
         """
+        i = len(self.root.yield_())
 
         def right_edge_helper(t: "Tree", t1: "Tree") -> bool:
             nonlocal i
@@ -300,7 +301,6 @@ class Tree:
                         return True
                 return False
 
-        i = len(self.root.yield_())
         if right_edge_helper(self, self.root):
             return i
         else:

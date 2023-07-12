@@ -6,7 +6,6 @@
 
 from typing import Union
 
-from pytregex.tree import Tree
 from pytregex.tregex import TregexPattern
 
 from .base_tmpl import BaseTmpl
@@ -470,26 +469,51 @@ class TestTregex(BaseTmpl):
         self.run_test("bar >>: foo", "(a (foo (bar)))", "(bar)")
 
     def test_PrecedesDescribedChain(self):
-        self.run_test("DT .+(JJ) NN", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(DT the)")
-        self.run_test("DT .+(@JJ) /^NN/", "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))", "(DT the)")
-        self.run_test("NN ,+(JJ) DT", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(NN house)")
-        self.run_test("NNS ,+(@JJ) /^DT/", "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))", "(NNS houses)")
-        self.run_test("NNS ,+(/^(JJ|DT).*$/) PDT", "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))", "(NNS houses)")
-        self.run_test("NNS ,+(@JJ) JJ", "(NP (PDT both) (DT the) (JJ large) (JJ-COLOUR green) (NNS houses))", "(NNS houses)")
+        self.run_test(
+            "DT .+(JJ) NN", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(DT the)"
+        )
+        self.run_test(
+            "DT .+(@JJ) /^NN/",
+            "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))",
+            "(DT the)",
+        )
+        self.run_test(
+            "NN ,+(JJ) DT", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(NN house)"
+        )
+        self.run_test(
+            "NNS ,+(@JJ) /^DT/",
+            "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))",
+            "(NNS houses)",
+        )
+        self.run_test(
+            "NNS ,+(/^(JJ|DT).*$/) PDT",
+            "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))",
+            "(NNS houses)",
+        )
+        self.run_test(
+            "NNS ,+(@JJ) JJ",
+            "(NP (PDT both) (DT the) (JJ large) (JJ-COLOUR green) (NNS houses))",
+            "(NNS houses)",
+        )
 
     def test_DominateDescribedChain(self):
         self.run_test("foo <+(bar) baz", "(a (foo (baz)))", "(foo (baz))")
         self.run_test("foo <+(bar) baz", "(a (foo (bar (baz))))", "(foo (bar (baz)))")
-        self.run_test("foo <+(bar) baz", "(a (foo (bar (bar (baz)))))",
-        "(foo (bar (bar (baz))))")
+        self.run_test(
+            "foo <+(bar) baz", "(a (foo (bar (bar (baz)))))", "(foo (bar (bar (baz))))"
+        )
         self.run_test("foo <+(bar) baz", "(a (foo (bif (baz))))")
         self.run_test("foo <+(!bif) baz", "(a (foo (bif (baz))))")
         self.run_test("foo <+(!bif) baz", "(a (foo (bar (baz))))", "(foo (bar (baz)))")
         self.run_test("foo <+(/b/) baz", "(a (foo (bif (baz))))", "(foo (bif (baz)))")
-        self.run_test("foo <+(/b/) baz", "(a (foo (bar (bif (baz)))))",
-        "(foo (bar (bif (baz))))")
-        self.run_test("foo <+(bar) baz", "(a (foo (bar (blah 1) (bar (baz)))))",
-        "(foo (bar (blah 1) (bar (baz))))")
+        self.run_test(
+            "foo <+(/b/) baz", "(a (foo (bar (bif (baz)))))", "(foo (bar (bif (baz))))"
+        )
+        self.run_test(
+            "foo <+(bar) baz",
+            "(a (foo (bar (blah 1) (bar (baz)))))",
+            "(foo (bar (blah 1) (bar (baz))))",
+        )
 
         self.run_test("baz >+(bar) foo", "(a (foo (baz)))", "(baz)")
         self.run_test("baz >+(bar) foo", "(a (foo (bar (baz))))", "(baz)")
