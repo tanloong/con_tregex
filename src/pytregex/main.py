@@ -25,7 +25,14 @@ class TregexUI:
         args_parser = argparse.ArgumentParser(
             prog="pytregex", formatter_class=argparse.RawDescriptionHelpFormatter
         )
-        args_parser.add_argument("pattern")
+        args_parser.add_argument("pattern", help="Tregex pattern")
+        args_parser.add_argument(
+            "-filter",
+            action="store_true",
+            dest="is_stdin",
+            default=False,
+            help="read tree input from stdin",
+        )
         args_parser.add_argument(
             "--version",
             action="store_true",
@@ -61,32 +68,48 @@ class TregexUI:
             logging_level = logging.INFO
         logging.basicConfig(format="%(message)s", level=logging_level)
 
-        verified_ifile_list = []
-        for path in ipath_list:
-            if os.path.isfile(path):
-                verified_ifile_list.append(path)
-            elif os.path.isdir(path):
-                verified_ifile_list.extend(glob.glob(f"{path}{os.path.sep}*.txt"))
-            elif glob.glob(path):
-                verified_ifile_list.extend(glob.glob(path))
-            else:
-                return (False, f"No such file as \n\n{path}")
-        self.verified_ifile_list = verified_ifile_list
+        self.tree_string = None
+        self.verified_ifile_list = None
+        if options.is_stdin:
+            if ipath_list:
+                return (
+                    False,
+                    "When reading tree input from stdin, input files are unaccepted: \n\n{}\n"
+                    .format("\n".join(ipath_list)),
+                )
+            self.tree_string = sys.stdin.read()
+        else:
+            verified_ifile_list = []
+            for path in ipath_list:
+                if os.path.isfile(path):
+                    verified_ifile_list.append(path)
+                elif os.path.isdir(path):
+                    verified_ifile_list.extend(glob.glob(f"{path}{os.path.sep}*.txt"))
+                elif glob.glob(path):
+                    verified_ifile_list.extend(glob.glob(path))
+                else:
+                    return (False, f"No such file as \n\n{path}")
+            if verified_ifile_list:
+                self.verified_ifile_list = verified_ifile_list
 
         self.options = options
         return True, None
 
     def run_matcher(self) -> TregexProcedureResult:
-        if not self.verified_ifile_list:
-            tree_string = (
-                "(VP (VP (VBZ Try) (NP (NP (DT this) (NN wine)) (CC and) (NP (DT these) (NNS"
-                " snails)))) (PUNCT .))"
-            )
-        else:
+        default_tree_string = (
+            "(VP (VP (VBZ Try) (NP (NP (DT this) (NN wine)) (CC and) (NP (DT these) (NNS"
+            " snails)))) (PUNCT .))"
+        )
+
+        if self.verified_ifile_list is not None:
             tree_string = ""
             for ifile in self.verified_ifile_list:
                 with open(ifile, "r", encoding="utf-8") as f:
                     tree_string += f.read()
+        elif self.tree_string is not None:
+            tree_string = self.tree_string
+        else:
+            tree_string = default_tree_string
 
         pattern = TregexPattern(self.options.pattern)
         matches = pattern.findall(tree_string)
