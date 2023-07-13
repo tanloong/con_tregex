@@ -7,6 +7,7 @@
 from typing import Union
 
 from pytregex.tregex import TregexPattern
+from pytregex.tree import Tree
 
 from .base_tmpl import BaseTmpl
 from .base_tmpl import tree as tree_string
@@ -36,6 +37,39 @@ class TestTregex(BaseTmpl):
         # TODO
         # self.assertTrue(tregex2.findall(tree_string))
         # self.assertTrue(tregex3.findall(tree_string))
+
+    def test_no_results(self):
+        pMWE = TregexPattern("/^MW/")
+        self.assertFalse(pMWE.findall("(Foo)"))
+
+    def test_one_result(self):
+        pMWE = TregexPattern("/^MW/")
+        matches = pMWE.findall("(ROOT (MWE (N 1) (N 2) (N 3)))")
+        self.assertEqual(1, len(matches))
+        self.assertEqual("(MWE (N 1) (N 2) (N 3))", matches[0].to_string())
+
+    def test_two_results(self):
+        pMWE = TregexPattern("/^MW/")
+        matches = pMWE.findall("(ROOT (MWE (N 1) (N 2) (N 3)) (MWV (A B)))")
+        self.assertEqual(2, len(matches))
+
+        self.assertEqual("(MWE (N 1) (N 2) (N 3))", matches[0].to_string())
+        self.assertEqual("(MWV (A B))", matches[1].to_string())
+
+    def test_reuse(self):
+        """
+        a tregex pattern should be able to go more than once. just like me.
+        """
+        pMWE = TregexPattern("/^MW/")
+
+        matches = pMWE.findall("(ROOT (MWE (N 1) (N 2) (N 3)) (MWV (A B)))")
+        self.assertEqual(2, len(matches))
+
+        matches = pMWE.findall("(ROOT (MWE (N 1) (N 2) (N 3)))")
+        self.assertEqual(1, len(matches))
+
+        matches = pMWE.findall("(Foo)")
+        self.assertEqual(0, len(matches))
 
     def test_test(self):
         """
@@ -342,7 +376,7 @@ class TestTregex(BaseTmpl):
         )
         self.run_test("/.*/ >>- /1/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
 
-    def test_FirstLastChild(self):
+    def test_first_last_child(self):
         # A is the first child of B
         self.run_test(
             "/.*/ >, root",
@@ -388,7 +422,7 @@ class TestTregex(BaseTmpl):
         self.run_test("/.*/ <- /3/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
         self.run_test("/.*/ <- /4/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
 
-    def test_OnlyChild(self):
+    def test_only_child(self):
         self.run_test("foo <: bar", "(foo (bar 1))", "(foo (bar 1))")
         self.run_test("foo <: bar", "(foo (bar 1) (bar 2))")
         self.run_test("foo <: bar", "(foo)")
@@ -403,7 +437,7 @@ class TestTregex(BaseTmpl):
 
         self.run_test("/.*/ >: foo", "(a (foo (bar 1)) (foo (baz 2)))", "(bar 1)", "(baz 2)")
 
-    def test_PrecedingFollowingSister(self):
+    def test_preceding_following_sister(self):
         # test preceding sisters
         preceding = TregexPattern("/.*/ $.. baz")
         self.run_test(preceding, "(a (foo 1) (bar 2) (baz 3))", "(foo 1)", "(bar 2)")
@@ -445,7 +479,7 @@ class TestTregex(BaseTmpl):
         self.run_test(imfollowing, "(a (foo 1) (baz 2) (bar 3))", "(bar 3)")
         self.run_test(imfollowing, "(a (baz 1) (foo 2) (bar 3))", "(foo 2)")
 
-    def test_DominateUnaryChain(self):
+    def test_dominate_unary_chain(self):
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar))))))", "(foo (b (c (d (bar)))))")
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar) (baz))))))")
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar)) (baz)))))")
@@ -468,7 +502,7 @@ class TestTregex(BaseTmpl):
         self.run_test("bar >>: foo", "(a (foo (b (bar))))", "(bar)")
         self.run_test("bar >>: foo", "(a (foo (bar)))", "(bar)")
 
-    def test_PrecedesDescribedChain(self):
+    def test_precedes_described_chain(self):
         self.run_test(
             "DT .+(JJ) NN", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(DT the)"
         )
@@ -496,7 +530,7 @@ class TestTregex(BaseTmpl):
             "(NNS houses)",
         )
 
-    def test_DominateDescribedChain(self):
+    def test_dominate_described_chain(self):
         self.run_test("foo <+(bar) baz", "(a (foo (baz)))", "(foo (baz))")
         self.run_test("foo <+(bar) baz", "(a (foo (bar (baz))))", "(foo (bar (baz)))")
         self.run_test(
@@ -525,7 +559,7 @@ class TestTregex(BaseTmpl):
         self.run_test("baz >+(/b/) foo", "(a (foo (bar (bif (baz)))))", "(baz)")
         self.run_test("baz >+(bar) foo", "(a (foo (bar (blah 1) (bar (baz)))))", "(baz)")
 
-    def test_SegmentedAndEqualsExpressions(self):
+    def test_segmented_and_equals_expressions(self):
         self.run_test("foo : bar", "(a (foo) (bar))", "(foo)")
         self.run_test("foo : bar", "(a (foo))")
         self.run_test(
@@ -550,7 +584,7 @@ class TestTregex(BaseTmpl):
         self.run_test("foo << bar == foo << baz", "(a (foo (bar) (baz)))", "(foo (bar) (baz))")
         self.run_test("foo << bar : (foo << baz)", "(a (foo (bar)) (foo (baz)))", "(foo (bar))")
 
-    def test_Complex(self):
+    def test_complex(self):
         test_pattern = (
             "S < (NP=m1 $.. (VP < ((/VB/ < /^(am|are|is|was|were|'m|'re|'s|be)$/) $.. NP=m2)))"
         )
@@ -628,7 +662,7 @@ class TestTregex(BaseTmpl):
         )
         self.run_test(test_pattern, test_tree)
 
-    def test_Complex2(self):
+    def test_complex2(self):
         inputTrees = [
             (
                 "(ROOT (S (NP (PRP You)) (VP (VBD did) (VP (VB go) (WHADVP (WRB How) (JJ long))"
@@ -671,7 +705,7 @@ class TestTregex(BaseTmpl):
         self.run_test(pattern, inputTrees[3])
         self.run_test(pattern, inputTrees[4], "(PP (IN in) (NP (NNP Australia)))")
 
-    def test_HeadOfPhrase(self):
+    def test_head_of_phrase(self):
         self.run_test(
             "NP <# NNS", "(NP (NN work) (NNS practices))", "(NP (NN work) (NNS practices))"
         )
@@ -743,10 +777,10 @@ class TestTregex(BaseTmpl):
                 " Soviet) (NNP Union))))"
             ),
             "(NP (NN work) (NNS practices))",
-            "(NP (DT the) (JJ former) (NNP Soviet) (NNP Union)))",
+            "(NP (DT the) (JJ former) (NNP Soviet) (NNP Union))",
         )
 
-    def test_Chinese(self):
+    def test_chinese(self):
         """
         Test a pattern with chinese characters in it, just to make sure
         that also works
@@ -754,7 +788,7 @@ class TestTregex(BaseTmpl):
         pattern = TregexPattern("DEG|DEC < 的")
         self.run_test("DEG|DEC < 的", "(DEG (的 1))", "(DEG (的 1))")
 
-    def test_ParentEquals(self):
+    def test_parent_equals(self):
         """
         The PARENT_EQUALS relation allows for a simplification of what
         would have been a pair of rules in the dependencies.
@@ -771,25 +805,26 @@ class TestTregex(BaseTmpl):
         )
         self.run_test("A <= (A < B)", "(A (A (C 2)))")
 
-    def test_RootDisjunction(self):
+    def test_root_disjunction(self):
         """
         Test a few possible ways to make disjunctions at the root level.
         Note that disjunctions at lower levels can always be created by
         repeating the relation, but that is not true at the root, since
         the root "relation" is implicit.
         """
-        self.run_test("A | B", "(A (B 1))", "(A (B 1))", "(B 1)")
+        self.run_test("A ; B", "(A (B 1))", "(A (B 1))", "(B 1)")
+        
+        self.run_test("(A) ; (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
+        self.run_test("(A|C) ; (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
+        
+        self.run_test("A < B ; A < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
 
-        self.run_test("(A) | (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
-        self.run_test("(A|C) | (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
-
-        self.run_test("A < B | A < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
-
-        self.run_test("A < B | B < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
-        self.run_test("A < B | B < C", "(A (B (C 1)) (C 2))", "(A (B (C 1)) (C 2))", "(B (C 1))")
+        self.run_test("A < B ; B < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
+        self.run_test("A < B ; B < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
+        self.run_test("A < B ; B < C", "(A (B (C 1)) (C 2))", "(A (B (C 1)) (C 2))", "(B (C 1))")
 
         self.run_test(
-            "A | B | C",
+            "A ; B ; C",
             "(A (B (C 1)) (C 2))",
             "(A (B (C 1)) (C 2))",
             "(B (C 1))",
@@ -815,5 +850,9 @@ class TestTregex(BaseTmpl):
         if isinstance(pattern, str):
             pattern = TregexPattern(pattern)
         matches = pattern.findall(tree_str)
-        # matches_str = tuple(m.to_string() for m in matches)
-        # self.assertEqual(matches_str, expected_results)
+        self.assertEqual(len(matches), len(expected_results))
+
+        for match, expected_result in zip(matches, expected_results):
+            # Tree.from_string returns a Tree list of length 1 for single-tree input
+            expected_tree = Tree.from_string(expected_result)[0]
+            self.assertEqual(match.to_string(), expected_tree.to_string())
