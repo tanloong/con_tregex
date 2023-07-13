@@ -1,5 +1,4 @@
 # /home/tan/.local/share/stanford-tregex-2020-11-17/stanford-tregex-4.2.0-sources/edu/stanford/nlp/trees/tregex/Relation.java
-# https://github.com/stanfordnlp/CoreNLP/blob/efc66a9cf49fecba219dfaa4025315ad966285cc/test/src/edu/stanford/nlp/trees/tregex/TregexTest.java
 import logging
 import re
 from typing import (
@@ -11,7 +10,6 @@ from typing import (
     Optional,
     Tuple,
     Union,
-    Iterator,
     NamedTuple,
 )
 
@@ -30,10 +28,16 @@ class ReducedRelation(NamedTuple):
     modifier: Optional[str]
 
 
-class ReducedRelationWithArg(NamedTuple):
+class ReducedRelationWithStrArg(NamedTuple):
     relation: str
     modifier: Optional[str]
     arg: List[Tree]
+
+
+class ReducedRelationWithNumArg(NamedTuple):
+    relation: str
+    modifier: Optional[str]
+    arg: int
 
 
 MODIFIER = Optional[str]
@@ -235,7 +239,7 @@ class TregexPattern:
     tokens = [  # {{{
         "REGEX",
         "BLANK",
-        "REL_W_ARG",
+        "REL_W_STR_ARG",
         "RELATION",
         "NOT",
         "OPTIONAL",
@@ -300,19 +304,27 @@ class TregexPattern:
         "<<<": Relation.ancestor_of_leaf,
     }
 
-    REL_W_ARG_MAP = {
+    REL_W_STR_ARG_MAP = {
         "<+": Relation.unbroken_category_dominates,
         ">+": Relation.unbroken_category_is_dominated_by,
         ".+": Relation.unbroken_category_precedes,
         ",+": Relation.unbroken_category_follows,
     }
+
+    REL_W_NUM_ARG_MAP = {
+        ">": Relation.ith_child_of,
+        ">-": Relation.ith_child_of,
+        "<": Relation.has_ith_child,
+        "<-": Relation.has_ith_child,
+    }
     # make sure long relations are checked first, or otherwise `>>` might
     # be tokenized as two `>`s.
     rels = sorted(RELATION_MAP.keys(), key=len, reverse=True)
-    # add negative lookahead assertion to ensure ">+" is seen as REL_W_ARG instead of RELATION(">") and ID("+")
+    # add negative lookahead assertion to ensure ">+" is seen as REL_W_STR_ARG instead of RELATION(">") and ID("+")
     t_RELATION = r"(?:" + "|".join(map(re.escape, rels)) + r")(?!\+)"
-    rels_w_arg = sorted(REL_W_ARG_MAP.keys(), key=len, reverse=True)
-    t_REL_W_ARG = "|".join(map(re.escape, rels_w_arg))
+    rels_w_arg = sorted(REL_W_STR_ARG_MAP.keys(), key=len, reverse=True)
+    t_REL_W_STR_ARG = "|".join(map(re.escape, rels_w_arg))
+    # REL_W_NUM_ARG don't have to be declared, as > and < have already been as t_RELATION
 
     t_NOT = r"!"
     t_OPTIONAL = r"\?"
@@ -325,7 +337,7 @@ class TregexPattern:
     t_RBRACKET = r"\]"
     t_EQUAL = r"="
     t_AT = r"@"
-    t_NUMBER = r"-?[0-9]+"
+    t_NUMBER = r"[0-9]+"
     t_ID = r"[^ 0-9\n\r(/|@!#&)=?[\]><~_.,$:{};][^ \n\r(/|@!#&)=?[\]><~.$:;]*"
     t_TERMINATOR = r";"
     t_ignore = " \r\t"
@@ -483,7 +495,9 @@ class TregexPattern:
             logging.debug("following rule: node_obj_list -> LPAREN node_obj_list RPAREN")
             p[0] = p[2]
 
-        # 2. Chain description
+        # --------------------------------------------------------
+        # 2. relation
+        # 2.1 RELATION
         def p_relation(p):
             """
             reduced_relation : RELATION
@@ -505,6 +519,73 @@ class TregexPattern:
             logging.debug("following rule: reduced_relation -> OPTIONAL RELATION")
             p[0] = ReducedRelation(p[2], "?")
 
+        # 2.2 REL_W_STR_ARG
+        def p_rel_w_str_arg_lparen_node_obj_list_rparen(p):
+            """
+            reduced_rel_w_str_arg : REL_W_STR_ARG LPAREN node_obj_list RPAREN
+            """
+            logging.debug(
+                "following rule: reduced_rel_w_str_arg -> REL_W_STR_ARG LPAREN node_obj_list"
+                " RPAREN"
+            )
+            # relation=p[1], modifier=None, arg=p[3].nodes
+            p[0] = ReducedRelationWithStrArg(p[1], None, p[3].nodes)
+
+        def p_not_rel_w_str_arg_lparen_node_obj_list_rparen(p):
+            """
+            reduced_rel_w_str_arg : NOT REL_W_STR_ARG LPAREN node_obj_list RPAREN
+            """
+            logging.debug(
+                "following rule: reduced_rel_w_str_arg -> NOT REL_W_STR_ARG LPAREN node_obj_list"
+                " RPAREN"
+            )
+            # relation=p[2], modifier=None, arg=p[4].nodes
+            p[0] = ReducedRelationWithStrArg(p[2], "!", p[4].nodes)
+
+        def p_optional_rel_w_str_arg_lparen_node_obj_list_rparen(p):
+            """
+            reduced_rel_w_str_arg : OPTIONAL REL_W_STR_ARG LPAREN node_obj_list RPAREN
+            """
+            logging.debug(
+                "following rule: reduced_rel_w_str_arg -> OPTIONAL REL_W_STR_ARG LPAREN"
+                " node_obj_list RPAREN"
+            )
+            # relation=p[2], modifier=None, arg=p[4].nodes
+            p[0] = ReducedRelationWithStrArg(p[2], "?", p[4].nodes)
+
+        # 2.3 REL_W_NUM_ARG
+        def p_relation_number(p):
+            """
+            reduced_rel_w_num_arg : RELATION NUMBER
+            """
+            logging.debug("following rule: reduced_rel_w_num_arg -> RELATION NUMBER")
+            rel, num = p[1:]
+            if rel.endswith("-"):
+                num = f"-{num}"
+            p[0] = ReducedRelationWithNumArg(rel, None, int(num))
+
+        def p_not_relation_number(p):
+            """
+            reduced_rel_w_num_arg : NOT RELATION NUMBER
+            """
+            logging.debug("following rule: reduced_rel_w_num_arg -> NOT RELATION NUMBER")
+            rel, num = p[2:]
+            if rel.endswith("-"):
+                num = f"-{num}"
+            p[0] = ReducedRelationWithNumArg(rel, "!", int(num))
+
+        def p_optional_relation_number(p):
+            """
+            reduced_rel_w_num_arg : OPTIONAL RELATION NUMBER
+            """
+            rel, num = p[2:]
+            if rel.endswith("-"):
+                num = f"-{num}"
+            logging.debug("following rule: reduced_rel_w_num_arg -> OPTIONAL RELATION NUMBER")
+            p[0] = ReducedRelationWithNumArg(rel, "?", int(num))
+
+        # 3. chain description
+        # --------------------------------------------------------
         def p_reduced_relation_node_obj_list(p):
             """
             and_conditions : reduced_relation node_obj_list %prec IMAGINE
@@ -516,50 +597,32 @@ class TregexPattern:
                 (self.RELATION_MAP[rel], those, modifier),
             ]
 
-        # REL_W_ARG
-        def p_rel_w_arg_lparen_node_obj_list_rparen(p):
+        def p_reduced_rel_w_str_arg_node_obj_list(p):
             """
-            reduced_rel_w_arg : REL_W_ARG LPAREN node_obj_list RPAREN
-            """
-            logging.debug(
-                "following rule: reduced_rel_w_arg -> REL_W_ARG LPAREN node_obj_list RPAREN"
-            )
-            # relation=p[1], modifier=None, arg=p[3].nodes
-            p[0] = ReducedRelationWithArg(p[1], None, p[3].nodes)
-
-        def p_not_rel_w_arg_lparen_node_obj_list_rparen(p):
-            """
-            reduced_rel_w_arg : NOT REL_W_ARG LPAREN node_obj_list RPAREN
+            and_conditions : reduced_rel_w_str_arg node_obj_list %prec IMAGINE
             """
             logging.debug(
-                "following rule: reduced_rel_w_arg -> NOT REL_W_ARG LPAREN node_obj_list"
-                " RPAREN"
-            )
-            # relation=p[2], modifier=None, arg=p[4].nodes
-            p[0] = ReducedRelationWithArg(p[2], "!", p[4].nodes)
-
-        def p_optional_rel_w_arg_lparen_node_obj_list_rparen(p):
-            """
-            reduced_rel_w_arg : OPTIONAL REL_W_ARG LPAREN node_obj_list RPAREN
-            """
-            logging.debug(
-                "following rule: reduced_rel_w_arg -> OPTIONAL REL_W_ARG LPAREN node_obj_list"
-                " RPAREN"
-            )
-            # relation=p[2], modifier=None, arg=p[4].nodes
-            p[0] = ReducedRelationWithArg(p[2], "?", p[4].nodes)
-
-        def p_reduced_rel_w_arg_node_obj_list(p):
-            """
-            and_conditions : reduced_rel_w_arg node_obj_list %prec IMAGINE
-            """
-            logging.debug(
-                "following rule: and_conditions -> reduced_rel_w_arg node_obj_list %prec IMAGINE"
+                "following rule: and_conditions -> reduced_rel_w_str_arg node_obj_list %prec"
+                " IMAGINE"
             )
             # %prec IMAGINE: https://github.com/dabeaz/ply/issues/215
-            (rel_w_arg, modifier, rel_arg), those_nodes = p[1:]
+            (rel_w_str_arg, modifier, rel_arg), those_nodes = p[1:]
             p[0] = [
-                (self.REL_W_ARG_MAP[rel_w_arg], those_nodes, modifier, rel_arg),
+                (self.REL_W_STR_ARG_MAP[rel_w_str_arg], those_nodes, modifier, rel_arg),
+            ]
+
+        def p_reduced_rel_w_num_arg_node_obj_list(p):
+            """
+            and_conditions : reduced_rel_w_num_arg node_obj_list %prec IMAGINE
+            """
+            logging.debug(
+                "following rule: and_conditions -> reduced_rel_w_num_arg node_obj_list %prec"
+                " IMAGINE"
+            )
+            # %prec IMAGINE: https://github.com/dabeaz/ply/issues/215
+            (rel_w_num_arg, modifier, rel_arg), those_nodes = p[1:]
+            p[0] = [
+                (self.REL_W_NUM_ARG_MAP[rel_w_num_arg], those_nodes, modifier, rel_arg),
             ]
 
         # --------------------------------------------------------

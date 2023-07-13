@@ -263,3 +263,22 @@ class Relation:
     @classmethod
     def pattern_splitter(cls, t1: "Tree", t2: "Tree") -> bool:
         return True
+
+    @classmethod
+    def ith_child_of(cls, t1: "Tree", t2: "Tree", child_num: int) -> bool:
+        if child_num == 0:
+            raise ValueError("Error -- no such thing as zeroth child!")
+
+        kids = t2.children
+        if len(kids) < abs(child_num):
+            return False
+        if child_num > 0 and kids[child_num - 1] is t1:
+            return True
+        if child_num < 0 and kids[len(kids) + child_num] is t1:
+            return True
+
+        return False
+
+    @classmethod
+    def has_ith_child(cls, t1: "Tree", t2: "Tree", child_num: int) -> bool:
+        return cls.ith_child_of(t2, t1, child_num)

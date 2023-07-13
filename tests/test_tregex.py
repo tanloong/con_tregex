@@ -71,6 +71,73 @@ class TestTregex(BaseTmpl):
         matches = pMWE.findall("(Foo)")
         self.assertEqual(0, len(matches))
 
+    def test_ith_child(self):
+        # A is the ith child of B
+        self.run_test(
+            "/.*/ >1 root",
+            "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
+            "(a (foo 1 2) (bar 3 4))",
+        )
+        self.run_test("/.*/ >1 a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)")
+        self.run_test("/.*/ >2 a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
+        self.run_test("/.*/ >1 foo", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(1)")
+        self.run_test("/.*/ >2 foo", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(2)")
+        self.run_test("/.*/ >1 bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(3)")
+        self.run_test("/.*/ >2 bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(4)")
+
+        # A is the -ith child of B
+        self.run_test(
+            "/.*/ >-1 root", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(b (baz 5))"
+        )
+        self.run_test("/.*/ >-1 a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
+        self.run_test("/.*/ >-2 a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)")
+        self.run_test("/.*/ >-1 foo", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(2)")
+        self.run_test("/.*/ >-2 bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(3)")
+        self.run_test("/.*/ >-1 bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(4)")
+        self.run_test("/.*/ >-1 b", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(baz 5)")
+        self.run_test("/.*/ >-2 b", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+
+        # B is the ith child of A
+        self.run_test("/.*/ <1 root", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test(
+            "/.*/ <1 a",
+            "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
+            "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
+        )
+        self.run_test("/.*/ <1 /1/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)")
+        self.run_test("/.*/ <1 /2/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test("/.*/ <1 bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test(
+            "/.*/ <2 bar",
+            "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
+            "(a (foo 1 2) (bar 3 4))",
+        )
+        self.run_test("/.*/ <3 bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test("/.*/ <1 /3/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
+        self.run_test("/.*/ <1 /4/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test("/.*/ <2 /4/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
+
+        # B is the -ith child of A
+        self.run_test("/.*/ <-1 root", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test("/.*/ <-1 a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test(
+            "/.*/ <-2 a",
+            "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
+            "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
+        )
+        self.run_test("/.*/ <-1 /1/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test("/.*/ <-2 /1/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)")
+        self.run_test("/.*/ <-1 /2/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)")
+        self.run_test("/.*/ <-2 /2/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test(
+            "/.*/ <-1 bar",
+            "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
+            "(a (foo 1 2) (bar 3 4))",
+        )
+        self.run_test("/.*/ <-1 /3/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
+        self.run_test("/.*/ <-2 /3/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
+        self.run_test("/.*/ <-1 /4/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
+
     def test_test(self):
         """
         reruns one of the simpler tests using the test class to make sure
@@ -813,10 +880,10 @@ class TestTregex(BaseTmpl):
         the root "relation" is implicit.
         """
         self.run_test("A ; B", "(A (B 1))", "(A (B 1))", "(B 1)")
-        
+
         self.run_test("(A) ; (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
         self.run_test("(A|C) ; (B)", "(A (B 1))", "(A (B 1))", "(B 1)")
-        
+
         self.run_test("A < B ; A < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
 
         self.run_test("A < B ; B < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
