@@ -569,8 +569,9 @@ class TregexPattern:
             logging.debug("following rule: node_obj_list -> node_obj_list chain")
             (these_nodes, this_name), or_conditions = p[1:]
             res, backrefs_map = TregexMatcher.or_(these_nodes, this_name, or_conditions)
-            for name,node_list in backrefs_map.items():
-                self.backrefs_map[name] = self.backrefs_map.get(name,[]) + node_list
+            for name, node_list in backrefs_map.items():
+                logging.debug("Mapping {} to nodes:\n  {}".format(name, "\n  ".join(node.to_string() for node in node_list)))
+                self.backrefs_map[name] = node_list
 
             p[0] = (res, this_name)
 

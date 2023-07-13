@@ -123,17 +123,21 @@ class TregexUI:
         if self.verified_ifile_list is not None:
             tree_string = ""
             for ifile in self.verified_ifile_list:
+                logging.debug(f"Reading tree input from input {ifile}...")
                 with open(ifile, "r", encoding="utf-8") as f:
                     tree_string += f.read()
         elif self.tree_string is not None:
+            logging.debug(f"Reading tree input from stdin...")
             tree_string = self.tree_string
         else:
+            logging.debug(f"No tree input. Using the default {default_tree_string}.")
             tree_string = default_tree_string
 
         pattern = TregexPattern(self.options.pattern)
         matches = pattern.findall(tree_string)
 
         if self.options.handles:
+            logging.debug("Printing handles...")
             for handle in self.options.handles:
                 try:
                     handled_nodes = pattern.backrefs_map[handle]
@@ -146,6 +150,7 @@ class TregexUI:
                 for node in handled_nodes:
                     sys.stdout.write(f"{node}\n")
         else:
+            logging.debug("Printing matches...")
             for m in matches:
                 sys.stdout.write(f"{m}\n")
         logging.info(f"There are {len(matches)} matches in total.")
