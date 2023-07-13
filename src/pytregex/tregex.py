@@ -44,18 +44,20 @@ class TregexMatcherBase:  # {{{
         those_nodes, that_name = those
 
         backrefs_map: Dict[str, list] = {}
-        if this_name is not None:
-            backrefs_map[this_name] = []
-        if that_name is not None:
-            backrefs_map[that_name] = []
+        # for "A=x < B=x", only map x to B
+        if this_name is not None and this_name == that_name:
+            this_name = None
+
+        for name in (this_name, that_name):
+            if name is not None:
+                backrefs_map[name] = []
 
         match_count = 0
         for that_node in those_nodes:
             if condition_func(this_node, that_node):
-                if this_name is not None:
-                    backrefs_map[this_name].append(this_node)
-                if that_name is not None:
-                    backrefs_map[that_name].append(that_node)
+                for name,node in ((this_name, this_node), (that_name, that_node)):
+                    if name is not None:
+                        backrefs_map[name].append(node)
                 match_count += 1
 
         return (match_count, backrefs_map)
@@ -158,8 +160,13 @@ class TregexMatcher(TregexMatcherBase):
                 return (0, {})
             
             match_count += match_count_cur_cond
-            for name,node_list in backrefs_map_cur_cond.items():
-                backrefs_map[name] = backrefs_map.get(name,[]) + node_list
+            for name, node_list in backrefs_map_cur_cond.items():
+                if backrefs_map.get(name) is not None:
+                    logging.warning(
+                        f'You gave different nodes the same name "{name}" in a single chain of and_conditions! Only the last node given that name'
+                        " will be remembered."
+                    )
+                backrefs_map[name] = node_list
 
         return (match_count, backrefs_map)
 
