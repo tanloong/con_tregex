@@ -182,7 +182,7 @@ class TregexMatcher(TregexMatcherBase):
         this_name: Optional[str],
         and_conditions: Tuple[Union[AND_CONDITION, AND_CONDITION_W_REL_ARG]],
     ) -> Tuple[int, dict]:
-        match_count = 0
+        match_count = 1
         backrefs_map: Dict[str, list] = {}
 
         for func, those, modifier, *arg in and_conditions:
@@ -197,7 +197,7 @@ class TregexMatcher(TregexMatcherBase):
             if match_count_cur_cond == 0:
                 return (0, {})
 
-            match_count += match_count_cur_cond
+            match_count *= match_count_cur_cond
             for name, node_list in backrefs_map_cur_cond.items():
                 if backrefs_map.get(name) is not None:
                     logging.warning(
