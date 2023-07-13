@@ -233,7 +233,6 @@ class TregexMatcher(TregexMatcherBase):
 
 class TregexPattern:
     tokens = [  # {{{
-        "ID",
         "REGEX",
         "BLANK",
         "REL_W_ARG",
@@ -250,6 +249,7 @@ class TregexPattern:
         "EQUAL",
         "AT",
         "NUMBER",
+        "ID",
         "TERMINATOR",
     ]
     # tokens = ['VARNAME',]
