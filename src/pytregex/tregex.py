@@ -633,7 +633,7 @@ class TregexPattern:
 
             p[0] = NamedNodes(this_name, res)
 
-        def p_nodes(p):
+        def p_node_obj_list(p):
             """
             pattern : node_obj_list
             """
