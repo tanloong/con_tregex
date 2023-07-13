@@ -241,8 +241,8 @@ class Relation:
             parent = parent.parent
             i = t1.get_sister_index()
 
-        # ensure i > 0 because Tree.get_sister_index() might return -1
-        if i > 0 and (i + 1) < parent.num_children:
+        # ensure i >= 0 because Tree.get_sister_index() might return -1
+        if i >= 0 and (i + 1) < parent.num_children:
             following_node = parent.children[i + 1]
         else:
             return False
