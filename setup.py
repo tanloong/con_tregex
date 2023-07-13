@@ -10,7 +10,7 @@ setuptools.setup(
     version=about["__version__"],
     author="Long Tan",
     author_email="tanloong@foxmail.com",
-    url="https://github.com/tanloong/con_tregex",
+    url="https://github.com/tanloong/pytregex",
     packages=setuptools.find_packages("src"),
     package_dir={"": "src"},
     description="Python implementation of Stanford Tregex",

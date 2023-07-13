@@ -23,9 +23,11 @@ class TregexUI:
 
     def create_args_parser(self) -> argparse.ArgumentParser:
         args_parser = argparse.ArgumentParser(
-            prog="pytregex", formatter_class=argparse.RawDescriptionHelpFormatter, add_help=False,
+            prog="pytregex",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            add_help=False,
         )
-        args_parser.add_argument('--help', action='help', help='Show this help message and exit')
+        args_parser.add_argument("--help", action="help", help="Show this help message and exit")
         args_parser.add_argument("pattern", help="Tregex pattern")
         args_parser.add_argument(
             "-filter",
@@ -127,7 +129,7 @@ class TregexUI:
                 with open(ifile, "r", encoding="utf-8") as f:
                     tree_string += f.read()
         elif self.tree_string is not None:
-            logging.debug(f"Reading tree input from stdin...")
+            logging.debug("Reading tree input from stdin...")
             tree_string = self.tree_string
         else:
             logging.debug(f"No tree input. Using the default {default_tree_string}.")
