@@ -26,11 +26,17 @@ class TregexMatcherBase:  # {{{
         condition_func: Callable,
     ) -> Tuple[int, dict]:
         if modifier is None:
-            match_count, backrefs_map = cls._exactly_match_condition(this_node, this_name, those, condition_func)
+            match_count, backrefs_map = cls._exactly_match_condition(
+                this_node, this_name, those, condition_func
+            )
         elif modifier == "!":
-            match_count, backrefs_map = cls._not_match_condition(this_node, those, condition_func)
+            match_count, backrefs_map = cls._not_match_condition(
+                this_node, those, condition_func
+            )
         else:
-            match_count, backrefs_map = cls._optionally_match_condition(this_node, those, condition_func)
+            match_count, backrefs_map = cls._optionally_match_condition(
+                this_node, those, condition_func
+            )
         return (match_count, backrefs_map)
 
     @classmethod
@@ -72,7 +78,12 @@ class TregexMatcherBase:  # {{{
         those_nodes, _ = those
 
         match_count = 0
-        if all(map(lambda that_node, this_node=this_node: not condition_func(this_node, that_node), those_nodes)):
+        if all(
+            map(
+                lambda that_node, this_node=this_node: not condition_func(this_node, that_node),
+                those_nodes,
+            )
+        ):
             match_count += 1
         return (match_count, {})
 
@@ -86,7 +97,7 @@ class TregexMatcherBase:  # {{{
         those_nodes, that_name = those
 
         if that_name is None:
-            return (1,{})
+            return (1, {})
 
         backrefs_map: Dict[str, list] = {}
         backrefs_map[that_name] = []
@@ -158,7 +169,7 @@ class TregexMatcher(TregexMatcherBase):
             )
             if match_count_cur_cond == 0:
                 return (0, {})
-            
+
             match_count += match_count_cur_cond
             for name, node_list in backrefs_map_cur_cond.items():
                 if backrefs_map.get(name) is not None:
@@ -177,17 +188,20 @@ class TregexMatcher(TregexMatcherBase):
         this_name: Optional[str],
         or_conditions: Tuple[AND_CONDITIONS],
     ) -> Tuple[List[Tree], dict]:
-        res:List[Tree] = []
-        backrefs_map:Dict[str, list] = {}
+        res: List[Tree] = []
+        backrefs_map: Dict[str, list] = {}
 
         for this_node in these_nodes:
             for and_conditions in or_conditions:
-                match_count, backrefs_map_cur_conds = cls.and_(this_node, this_name, and_conditions)
+                match_count, backrefs_map_cur_conds = cls.and_(
+                    this_node, this_name, and_conditions
+                )
 
                 res += [this_node for _ in range(match_count)]
-                for name,node_list in backrefs_map_cur_conds.items():
-                    backrefs_map[name] = backrefs_map.get(name,[]) + node_list
+                for name, node_list in backrefs_map_cur_conds.items():
+                    backrefs_map[name] = backrefs_map.get(name, []) + node_list
         return (res, backrefs_map)
+
 
 class TregexPattern:
     tokens = [  # {{{
@@ -305,8 +319,9 @@ class TregexPattern:
     def __init__(self, tregex_pattern: str):
         self.lexer = lex.lex(module=self)
         self.lexer.input(tregex_pattern)
+
         self.backrefs_map: Dict[str, list] = {}
-        # relation:str, modifier:Optional["!"|"?"]
+        self.pattern = tregex_pattern
 
     def findall(self, tree_string: str) -> tuple:
         trees = Tree.from_string(tree_string)
@@ -326,14 +341,13 @@ class TregexPattern:
 
         precedence = (
             ("left", "OR_REL"),
-            ("left", "RELATION", "AND"),
-            ("left", "IMAGINE"),  # https://github.com/dabeaz/ply/issues/215
-            ("nonassoc", "EQUAL"),
-            # ("right", "AND"),
             # keep consistency with Stanford Tregex
             # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
-            # ("left", "RELATION"),
+            ("left", "RELATION", "AND"),
+            # https://github.com/dabeaz/ply/issues/215
+            ("left", "IMAGINE"),
+            ("nonassoc", "EQUAL"),
         )  # }}}
 
         # 1. Label description
