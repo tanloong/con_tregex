@@ -320,8 +320,8 @@ class TregexPattern:
         precedence = (
             ("left", "OR_REL"),
             ("left", "RELATION", "AND"),
-            ("nonassoc", "EQUAL"),
             ("left", "IMAGINE"),  # https://github.com/dabeaz/ply/issues/215
+            ("nonassoc", "EQUAL"),
             # ("right", "AND"),
             # keep consistency with Stanford Tregex
             # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
