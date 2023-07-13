@@ -250,6 +250,7 @@ class TregexPattern:
         "EQUAL",
         "AT",
         "NUMBER",
+        "TERMINATOR",
     ]
     # tokens = ['VARNAME',]
 
@@ -325,7 +326,8 @@ class TregexPattern:
     t_EQUAL = r"="
     t_AT = r"@"
     t_NUMBER = r"-?[0-9]+"
-    t_ID = r"[^ 0-9\n\r(/|@!#&)=?[\]><~_.,$:{};][^ \n\r(/|@!#&)=?[\]><~.$:]*"
+    t_ID = r"[^ 0-9\n\r(/|@!#&)=?[\]><~_.,$:{};][^ \n\r(/|@!#&)=?[\]><~.$:;]*"
+    t_TERMINATOR = r";"
     t_ignore = " \r\t"
 
     def t_REGEX(self, t):
@@ -638,6 +640,23 @@ class TregexPattern:
             logging.debug("following rule: pattern -> node_obj_list")
             p[0] = p[1].nodes
 
+        def p_pattern(p):
+            """
+            patterns : pattern
+                     | pattern TERMINATOR
+            """
+            logging.debug("following rule: patterns -> pattern")
+            p[0] = p[1]
+
+        def p_pattern_pattern(p):
+            """
+            patterns : patterns pattern
+                     | patterns pattern TERMINATOR
+            """
+            logging.debug("following rule: patterns -> patterns pattern")
+            p[1].extend(p[2])
+            p[0] = p[1]
+
         def p_error(p):
             if p:
                 logging.critical(
@@ -648,4 +667,4 @@ class TregexPattern:
                 logging.critical("Parsing Error at EOF")
             raise SystemExit()
 
-        return yacc.yacc(debug=False, start="pattern")
+        return yacc.yacc(debug=True, start="patterns")
