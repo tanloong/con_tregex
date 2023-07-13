@@ -238,7 +238,7 @@ class TregexPattern:
         "BLANK",
         "REL_W_ARG",
         "RELATION",
-        "NEGATION",
+        "NOT",
         "OPTIONAL",
         "AND",
         "OR_NODE",
@@ -313,7 +313,7 @@ class TregexPattern:
     rels_w_arg = sorted(REL_W_ARG_MAP.keys(), key=len, reverse=True)
     t_REL_W_ARG = "|".join(map(re.escape, rels_w_arg))
 
-    t_NEGATION = r"!"
+    t_NOT = r"!"
     t_OPTIONAL = r"\?"
     t_AND = r"&"  # in `NP < NN | < NNS & > S`, `&` takes precedence over `|`
     t_OR_REL = r"\|\|"
@@ -427,11 +427,11 @@ class TregexPattern:
                 list(TregexMatcher.match_or_nodes(trees, p[1], is_negate=False)),
             )
 
-        def p_negation_or_nodes(p):
+        def p_not_or_nodes(p):
             """
-            node_obj_list : NEGATION or_nodes
+            node_obj_list : NOT or_nodes
             """
-            logging.debug("following rule: node_obj_list -> NEGATION or_nodes")
+            logging.debug("following rule: node_obj_list -> NOT or_nodes")
             p[0] = NamedNodes(
                 None, list(TregexMatcher.match_or_nodes(trees, p[2], is_negate=True))
             )
@@ -446,11 +446,11 @@ class TregexPattern:
                 list(node for node in TregexMatcher.match_regex(trees, p[1], is_negate=False)),
             )
 
-        def p_negation_regex(p):
+        def p_not_regex(p):
             """
-            node_obj_list : NEGATION REGEX
+            node_obj_list : NOT REGEX
             """
-            logging.debug("following rule: or_nodes -> NEGATION REGEX")
+            logging.debug("following rule: or_nodes -> NOT REGEX")
             p[0] = NamedNodes(
                 None,
                 list(node for node in TregexMatcher.match_regex(trees, p[2], is_negate=True)),
@@ -489,11 +489,11 @@ class TregexPattern:
             logging.debug("following rule: reduced_relation -> RELATION")
             p[0] = ReducedRelation(p[1], None)
 
-        def p_negation_relation(p):
+        def p_not_relation(p):
             """
-            reduced_relation : NEGATION RELATION
+            reduced_relation : NOT RELATION
             """
-            logging.debug("following rule: reduced_relation -> NEGATION RELATION")
+            logging.debug("following rule: reduced_relation -> NOT RELATION")
             p[0] = ReducedRelation(p[2], "!")
 
         def p_optional_relation(p):
@@ -525,12 +525,12 @@ class TregexPattern:
             # relation=p[1], modifier=None, arg=p[3].nodes
             p[0] = ReducedRelationWithArg(p[1], None, p[3].nodes)
 
-        def p_negation_rel_w_arg_lparen_node_obj_list_rparen(p):
+        def p_not_rel_w_arg_lparen_node_obj_list_rparen(p):
             """
-            reduced_rel_w_arg : NEGATION REL_W_ARG LPAREN node_obj_list RPAREN
+            reduced_rel_w_arg : NOT REL_W_ARG LPAREN node_obj_list RPAREN
             """
             logging.debug(
-                "following rule: reduced_rel_w_arg -> NEGATION REL_W_ARG LPAREN node_obj_list"
+                "following rule: reduced_rel_w_arg -> NOT REL_W_ARG LPAREN node_obj_list"
                 " RPAREN"
             )
             # relation=p[2], modifier=None, arg=p[4].nodes
