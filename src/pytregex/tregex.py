@@ -316,6 +316,8 @@ class TregexPattern:
         ">-": Relation.ith_child_of,
         "<": Relation.has_ith_child,
         "<-": Relation.has_ith_child,
+        "<<<": Relation.ancestor_of_ith_leaf,
+        "<<<-": Relation.ancestor_of_ith_leaf,
     }
     # make sure long relations are checked first, or otherwise `>>` might
     # be tokenized as two `>`s.

@@ -468,3 +468,19 @@ class Tree:
             for child in self.children:
                 for descendant in child.preorder_iter():
                     yield descendant
+
+    def get_leaves(self) -> List["Tree"]:
+        """
+        Gets the leaves of the tree.  All leaves nodes are returned as a list
+        ordered by the natural left to right order of the tree.  None values,
+        if any, are inserted into the list like any other value.
+
+        return a list of the leaves.
+        """
+        leaves = []
+        if self.is_leaf:
+            leaves.append(self)
+        else:
+            for kid in self.children:
+                leaves.extend(kid.get_leaves())
+        return leaves

@@ -282,3 +282,25 @@ class Relation:
     @classmethod
     def has_ith_child(cls, t1: "Tree", t2: "Tree", child_num: int) -> bool:
         return cls.ith_child_of(t2, t1, child_num)
+
+    @classmethod
+    def ancestor_of_ith_leaf(cls, t1: "Tree", t2: "Tree", leaf_num: int) -> bool:
+        if leaf_num == 0:
+            raise ValueError("Error -- no such thing as zeroth leaf!")
+
+        if t1 is t2:
+            return False
+        if not t2.is_leaf:
+            return False
+
+        # this is kind of lazy if it somehow became a performance limitation, a
+        # recursive search would be faster
+        leaves = t1.get_leaves()
+        if len(leaves) < abs(leaf_num):
+            return False
+        if leaf_num > 0:
+            index = leaf_num - 1
+        else:
+            # eg, leafNum == -1 means we check leaves.size() - 1
+            index = len(leaves) + leaf_num
+        return leaves[index] is t2

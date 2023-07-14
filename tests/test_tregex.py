@@ -772,6 +772,17 @@ class TestTregex(BaseTmpl):
         self.run_test(pattern, inputTrees[3])
         self.run_test(pattern, inputTrees[4], "(PP (IN in) (NP (NNP Australia)))")
 
+    def test_ancestor_of_ith_leaf(self):
+        self.run_test("A <<<1 b", "(ROOT (A (B b)))", "(A (B b))")
+        self.run_test("A <<<2 b", "(ROOT (A (B b)))")
+        self.run_test("A <<<-1 b", "(ROOT (A (B b)))", "(A (B b))")
+        self.run_test("A <<<1 b", "(ROOT (A (B z) (C b)))")
+        self.run_test("A <<<2 b", "(ROOT (A (B z) (C b)))", "(A (B z) (C b))")
+        self.run_test("A <<<-1 b", "(ROOT (A (B z) (C b)))", "(A (B z) (C b))")
+        self.run_test("A <<<-2 b", "(ROOT (A (B z) (C b)))")
+        self.run_test("A <<<-1 z", "(ROOT (A (B z) (C b)))")
+        self.run_test("A <<<-2 z", "(ROOT (A (B z) (C b)))", "(A (B z) (C b))")
+
     def test_head_of_phrase(self):
         self.run_test(
             "NP <# NNS", "(NP (NN work) (NNS practices))", "(NP (NN work) (NNS practices))"
