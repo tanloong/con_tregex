@@ -288,9 +288,7 @@ class Relation:
         if leaf_num == 0:
             raise ValueError("Error -- no such thing as zeroth leaf!")
 
-        if t1 is t2:
-            return False
-        if not t2.is_leaf:
+        if t1 is t2 or not t2.is_leaf:
             return False
 
         # this is kind of lazy if it somehow became a performance limitation, a

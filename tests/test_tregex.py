@@ -917,6 +917,44 @@ class TestTregex(BaseTmpl):
         self.run_test("A < B || < C", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
         self.run_test("A < B || < C", "(B (C 1))")
 
+    def test_subtree_pattern(self):
+        """
+        Tests the subtree pattern, <..., which checks for
+        an exact subtree under our current tree
+        """
+        # test the obvious expected matches and several expected match failures
+        self.run_test("A <... { B ; C ; D }", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))")
+        self.run_test(
+            "A <... { B ; C ; D }", "(Z (A (B 1) (C 2) (D 3)))", "(A (B 1) (C 2) (D 3))"
+        )
+        self.run_test("A <... { B ; C ; D }", "(A (B 1) (C 2) (D 3) (E 4))")
+        self.run_test("A <... { B ; C ; D }", "(A (E 4) (B 1) (C 2) (D 3))")
+        self.run_test("A <... { B ; C ; D }", "(A (B 1) (C 2) (E 4) (D 3))")
+        self.run_test("A <... { B ; C ; D }", "(A (B 1) (C 2))")
+
+        # every test above should return the opposite when negated
+        self.run_test("A !<... { B ; C ; D }", "(A (B 1) (C 2) (D 3))")
+        self.run_test("A !<... { B ; C ; D }", "(Z (A (B 1) (C 2) (D 3)))")
+        self.run_test(
+            "A !<... { B ; C ; D }", "(A (B 1) (C 2) (D 3) (E 4))", "(A (B 1) (C 2) (D 3) (E 4))"
+        )
+        self.run_test(
+            "A !<... { B ; C ; D }", "(A (E 4) (B 1) (C 2) (D 3))", "(A (E 4) (B 1) (C 2) (D 3))"
+        )
+        self.run_test(
+            "A !<... { B ; C ; D }", "(A (B 1) (C 2) (E 4) (D 3))", "(A (B 1) (C 2) (E 4) (D 3))"
+        )
+        self.run_test("A !<... { B ; C ; D }", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
+
+        # test a couple various forms of nesting
+        self.run_test("A <... { (B < C) ; D }", "(A (B (C 2)) (D 3))", "(A (B (C 2)) (D 3))")
+        self.run_test(
+            "A <... { (B <... { C ; D }) ; E }",
+            "(A (B (C 2) (D 3)) (E 4))",
+            "(A (B (C 2) (D 3)) (E 4))",
+        )
+        self.run_test("A <... { (B !< C) ; D }", "(A (B (C 2)) (D 3))")
+
     def run_test(
         self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str
     ):

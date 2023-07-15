@@ -155,7 +155,7 @@ class TregexUI:
             logging.debug("Printing matches...")
             for m in matches:
                 sys.stdout.write(f"{m}\n")
-        logging.info(f"There are {len(matches)} matches in total.")
+        logging.info(f"There were {len(matches)} matches in total.")
 
         return True, None
 
