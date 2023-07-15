@@ -791,69 +791,49 @@ class TestTregex(BaseTmpl):
         # should have no results
         self.run_test(
             "NP <<# NNS",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NP (NN work) (NNS practices))",
         )
         self.run_test(
             "NP !<# NNS <<# NNS",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
         )
         self.run_test(
             "NP !<# NNP <<# NNP",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
         )
         # no results
         self.run_test(
             "NNS ># NP",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NNS practices)",
         )
         self.run_test(
             "NNS ># (NP < PP)",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
         )
         # no results
         self.run_test(
             "NNS >># (NP < PP)",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NNS practices)",
         )
         self.run_test(
             "NP <<# /^NN/",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NP (NN work) (NNS practices))",
             "(NP (DT the) (JJ former) (NNP Soviet) (NNP Union))",
         )
@@ -865,6 +845,105 @@ class TestTregex(BaseTmpl):
         """
         pattern = TregexPattern("DEG|DEC < 的")
         self.run_test("DEG|DEC < 的", "(DEG (的 1))", "(DEG (的 1))")
+
+    def test_parenthesized_expressions(self):
+        tree_strings = [
+            (
+                "( (S (S (PP (IN In) (NP (CD 1941) )) (, ,) (NP (NP (NNP Raeder) ) (CC and) (NP"
+                " (DT the) (JJ German) (NN navy) )) (VP (VBD threatened) (S (VP (TO to) (VP (VB"
+                " attack) (NP (DT the) (NNP Panama) (NNP Canal) )))))) (, ,) (RB so) (S (NP (PRP"
+                " we) ) (VP (VBD created) (NP (NP (DT the) (NNP Southern) (NNP Command) )"
+                " (PP-LOC (IN in) (NP (NNP Panama) ))))) (. .) ))"
+            ),
+            (
+                "(S (S (NP-SBJ (NNP Japan) ) (VP (MD can) (VP (VP (VB grow) ) (CC and) (VP (RB"
+                " not) (VB cut) (PRT (RB back) ))))) (, ,) (CC and) (RB so) (S (ADVP (RB too) )"
+                " (, ,) (NP (NP (NNP New) (NNP Zealand) )) ))"
+            ),
+            (
+                "( (S (S (NP-SBJ (PRP You) ) (VP (VBP make) (NP (DT a) (NN forecast) ))) (, ,)"
+                " (CC and) (RB then) (S (NP-SBJ (PRP you) ) (VP (VBP become) (NP-PRD (PRP$ its)"
+                " (NN prisoner) ))) (. .)))"
+            ),
+        ]
+
+        # First pattern: no parenthesized expressions.  All three trees should match once.
+        pattern = TregexPattern("/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ $+ (RB=adv $+ /^S/)))")
+        matches = pattern.findall(tree_strings[0])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[1])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[2])
+        self.assertEqual(1, len(matches))
+
+        # Second pattern: single relation in parentheses.  First tree should not match.
+        pattern = TregexPattern(
+            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ (< and) $+ (RB=adv $+ /^S/)))"
+        )
+        matches = pattern.findall(tree_strings[0])
+        self.assertEqual(0, len(matches))
+
+        matches = pattern.findall(tree_strings[1])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[2])
+        self.assertEqual(1, len(matches))
+
+        # Third pattern: single relation in parentheses and negated.  Only first tree should match.
+        pattern = TregexPattern(
+            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ !(< and) $+ (RB=adv $+ /^S/)))"
+        )
+        matches = pattern.findall(tree_strings[0])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[1])
+        self.assertEqual(0, len(matches))
+
+        matches = pattern.findall(tree_strings[2])
+        self.assertEqual(0, len(matches))
+
+        # Fourth pattern: double relation in parentheses, no negation.
+        pattern = TregexPattern(
+            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ (< and $+ RB) $+ (RB=adv $+ /^S/)))"
+        )
+        matches = pattern.findall(tree_strings[0])
+        self.assertEqual(0, len(matches))
+
+        matches = pattern.findall(tree_strings[1])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[2])
+        self.assertEqual(1, len(matches))
+
+        # Fifth pattern: double relation in parentheses, negated.
+        pattern = TregexPattern(
+            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ !(< and $+ RB) $+ (RB=adv $+ /^S/)))"
+        )
+        matches = pattern.findall(tree_strings[0])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[1])
+        self.assertEqual(0, len(matches))
+
+        matches = pattern.findall(tree_strings[2])
+        self.assertEqual(0, len(matches))
+
+        # Six pattern: double relation in parentheses, negated.  The only
+        # tree with "and then" is the third one, so that is the one tree
+        # that should not match.
+        pattern = TregexPattern(
+            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ !(< and $+ (RB < then)) $+ (RB=adv $+ /^S/)))"
+        )
+        matches = pattern.findall(tree_strings[0])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[1])
+        self.assertEqual(1, len(matches))
+
+        matches = pattern.findall(tree_strings[2])
+        self.assertEqual(0, len(matches))
 
     def test_parent_equals(self):
         """
@@ -954,6 +1033,60 @@ class TestTregex(BaseTmpl):
             "(A (B (C 2) (D 3)) (E 4))",
         )
         self.run_test("A <... { (B !< C) ; D }", "(A (B (C 2)) (D 3))")
+
+    def test_disjunction_variable_assignments(self):
+        tree_string = (
+            "(NP (UCP (NNP U.S.) (CC and) (ADJP (JJ northern) (JJ European))) (NNS diplomats))"
+        )
+        pattern = TregexPattern("UCP [ <- (ADJP=adjp < JJR) || <, NNP=np ]")
+
+        matches = pattern.findall(tree_string)
+        self.assertEqual(1, len(matches))
+
+        handled_nodes = pattern.get_nodes("np")
+        self.assertIsNotNone(handled_nodes)
+        self.assertEqual(1, len(handled_nodes))
+        self.assertEqual("(NNP U.S.)", handled_nodes[0].to_string())
+
+    def test_optional(self):
+        tree_string = "(A (B (C 1)) (B 2))"
+        pattern = TregexPattern("B ? < C=c")
+
+        matches = pattern.findall(tree_string)
+        self.assertEqual(2, len(matches))
+
+        handled_nodes = pattern.get_nodes("c")
+        self.assertIsNotNone(handled_nodes)
+        self.assertEqual(1, len(handled_nodes))
+        self.assertEqual("(C 1)", handled_nodes[0].to_string())
+
+        # TODO =punc
+        # tree_string = "(ROOT (INTJ (CC But) (S (NP (DT the) (NNP RTC)) (ADVP (RB also)) (VP (VBZ requires) (`` ``) (S (FRAG (VBG working) ('' '') (NP (NP (NN capital)) (S (VP (TO to) (VP (VB maintain) (SBAR (S (NP (NP (DT the) (JJ bad) (NNS assets)) (PP (IN of) (NP (NP (NNS thrifts)) (SBAR (WHNP (WDT that)) (S (VP (VBP are) (VBN sold) (, ,) (PP (IN until) (NP (DT the) (NNS assets))))))))) (VP (MD can) (VP (VB be) (VP (VBN sold) (ADVP (RB separately))))))))))))))) (S (VP (. .)))))"
+        # # a pattern used to rearrange punctuation nodes in the srparser
+        # pattern = TregexPattern("__ !> __ <- (__=top <- (__ <<- (/[.]|PU/=punc < /[.!?。！？]/ ?> (__=single <: =punc))))")
+        #
+        # matches = pattern.findall(tree_string)
+        # self.assertEqual(1, len(matches))
+        #
+        # handled_nodes = pattern.get_nodes("punc")
+        # self.assertEqual("(. .)", handled_nodes[0].to_string())
+        # self.assertEqual("(VP (. .))", handled_nodes[1].to_string())
+
+    # TODO
+    # def test_negated_disjunction(self):
+    #     """
+    #     A user supplied an example of a negated disjunction which went into an infinite loop.
+    #     Apparently no one had ever used a negated disjunction of tree structures before!
+    #     <br>
+    #     The problem was that the logic at the time tried to backtrack in
+    #     the disjunction to find a better match, but that resulted in it
+    #     going back and forth between the failed clause which was accepted
+    #     and the successful clause which was rejected.  The problem being
+    #     that the first half of the disjunction doesn't match, so the
+    #     pattern is successful up to that point, but the second half does
+    #     match, causing the pattern to be rejected and restarted.
+    #     """
+    #     self.run_test("NP![</,/|.(JJ<else)]", "( (NP (NP (NN anyone)) (ADJP (JJ else))))", "(NP (NP (NN anyone)) (ADJP (JJ else)))")
 
     def run_test(
         self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str
