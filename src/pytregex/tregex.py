@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import logging
 import re
+from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
 from ply import lex, yacc
@@ -15,12 +16,13 @@ class NamedNodes:
     nodes: List[Tree]
 
 
-class ReducedRelationBase:
+class ReducedRelationBase(ABC):
     def __init__(self, op: Callable, modifier: Optional[str]):
         self.op = op
         self.modifier = modifier
 
-    def condition_func(self, *args, **kwargs):
+    @abstractmethod
+    def condition_func(self, this_node: Tree, that_node: Tree):
         raise NotImplementedError()
 
 
@@ -202,7 +204,19 @@ class TregexMatcher(TregexMatcherBase):
         match_count = 1
         backrefs_map: Dict[str, list] = {}
 
+        # prevent the same name is given to different nodes
+        names = [this_name] if this_name is not None else []
         for relation_data, those in and_conditions:
+            that_name = those.name
+            if that_name is not None:
+                if that_name in names:
+                    raise SystemExit(
+                        f'Error!!  The name "{that_name}" has been assigned multiple times in a single'
+                        " chain of and_conditions."
+                    )
+                else:
+                    names.append(that_name)
+
             match_count_cur_cond, backrefs_map_cur_cond = cls.match_relation(
                 this_node,
                 this_name,
@@ -216,12 +230,6 @@ class TregexMatcher(TregexMatcherBase):
 
             match_count *= match_count_cur_cond
             for name, node_list in backrefs_map_cur_cond.items():
-                if backrefs_map.get(name) is not None:
-                    logging.warning(
-                        f'You gave different nodes the same name "{name}" in a single chain of'
-                        " and_conditions! Only the last node given that name will be"
-                        " remembered."
-                    )
                 backrefs_map[name] = node_list
 
         return (match_count, backrefs_map)
@@ -547,29 +555,7 @@ class TregexPattern:
             logging.debug("following rule: reduced_relation -> OPTIONAL RELATION")
             p[0] = ReducedRelation(self.RELATION_MAP[p[2]], "?")
 
-        # 2.2 MULTI_RELATION
-        # def p_multi_relation(p):
-        #     """
-        #     reduced_multi_relation : MULTI_RELATION
-        #     """
-        #     logging.debug("following rule: reduced_multi_relation -> MULTI_RELATION")
-        #     p[0] = (p[1], None)
-
-        # def p_not_multi_relation(p):
-        #     """
-        #     reduced_multi_relation : NOT MULTI_RELATION
-        #     """
-        #     logging.debug("following rule: reduced_multi_relation -> NOT MULTI_RELATION")
-        #     p[0] = (p[2], "!")
-
-        # def p_optional_multi_relation(p):
-        #     """
-        #     reduced_multi_relation : OPTIONAL MULTI_RELATION
-        #     """
-        #     logging.debug("following rule: reduced_multi_relation -> OPTIONAL MULTI_RELATION")
-        #     p[0] = (p[2], "?")
-
-        # 2.3 REL_W_STR_ARG
+        # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_named_nodes_rparen(p):
             """
             reduced_rel_w_str_arg : REL_W_STR_ARG LPAREN named_nodes RPAREN
@@ -603,7 +589,7 @@ class TregexPattern:
             # relation=p[2], modifier=None, arg=p[4].nodes
             p[0] = ReducedRelationWithStrArg(self.REL_W_STR_ARG_MAP[p[2]], "?", p[4].nodes)
 
-        # 2.4 REL_W_NUM_ARG
+        # 2.3 REL_W_NUM_ARG
         def p_relation_number(p):
             """
             reduced_rel_w_num_arg : RELATION NUMBER
@@ -648,9 +634,7 @@ class TregexPattern:
             """
             and_conditions : MULTI_RELATION "{" named_nodes_list "}"
             """
-            logging.debug(
-                'following rule: and_conditions -> MULTI_RELATION "{" patterns "}"'
-            )
+            logging.debug('following rule: and_conditions -> MULTI_RELATION "{" patterns "}"')
             multi_rel = p[1]
             named_nodes_list = p[3]
 
@@ -672,7 +656,8 @@ class TregexPattern:
             or_conditions_multi_relation : NOT MULTI_RELATION "{" named_nodes_list "}"
             """
             logging.debug(
-                'following rule: or_conditions_multi_relation -> NOT MULTI_RELATION "{" patterns "}"'
+                'following rule: or_conditions_multi_relation -> NOT MULTI_RELATION "{"'
+                ' patterns "}"'
             )
             multi_rel = p[2]
             named_nodes_list = p[4]
@@ -681,6 +666,11 @@ class TregexPattern:
             or_conditions = []
 
             for i, named_nodes in enumerate(named_nodes_list, 1):
+                # prevent naming subpattern children for NOT MULTI_RELATION (!<...)
+                name = named_nodes.name
+                if name is not None:
+                    raise SystemExit(f"Error!!  Naming a subpattern for a negated MULTI_RELATION is not allowed. You need to remove the \"{name}\" designation.")
+                
                 reduced_multi_relation = ReducedMultiRelation(op, "!", i)
                 or_conditions.append([(reduced_multi_relation, named_nodes)])
 
@@ -694,10 +684,14 @@ class TregexPattern:
             """
             named_nodes : named_nodes or_conditions_multi_relation
             """
-            logging.debug("following rule: named_nodes -> named_nodes or_conditions_multi_relation")
+            logging.debug(
+                "following rule: named_nodes -> named_nodes or_conditions_multi_relation"
+            )
             this_name, these_nodes = p[1].name, p[1].nodes
             or_conditions_multi_relation = p[2]
-            res, backrefs_map = TregexMatcher.or_(these_nodes, this_name, or_conditions_multi_relation)
+            res, backrefs_map = TregexMatcher.or_(
+                these_nodes, this_name, or_conditions_multi_relation
+            )
             for name, node_list in backrefs_map.items():
                 logging.debug(
                     "Mapping {} to nodes:\n  {}".format(
@@ -709,7 +703,7 @@ class TregexPattern:
             res_uniq = []
             previous_node: Optional[Tree] = None
             for node in res:
-                if not node is previous_node:
+                if node is not previous_node:
                     res_uniq.append(node)
                 previous_node = node
 
