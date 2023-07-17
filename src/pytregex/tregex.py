@@ -1,8 +1,9 @@
 # /home/tan/.local/share/stanford-tregex-2020-11-17/stanford-tregex-4.2.0-sources/edu/stanford/nlp/trees/tregex/Relation.java
 from abc import ABC, abstractmethod
+from collections import namedtuple
 import logging
 import re
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, Iterator
 
 from ply import lex, yacc
 
@@ -11,9 +12,16 @@ from tree import Tree
 
 
 class NamedNodes:
-    def __init__(self, name: Optional[str], nodes: List[Tree]):
+    def __init__(self, name: Optional[str], nodes: List[Tree], describing_str: str = ""):
         self.name = name
         self.nodes = nodes
+        self.describing_str = describing_str
+
+    def set_name(self, new_name: Optional[str]):
+        self.name = new_name
+
+    def set_nodes(self, new_nodes: List[Tree]):
+        self.nodes = new_nodes
 
     def merge(self, other: "NamedNodes"):
         self.name = other.name
@@ -21,7 +29,9 @@ class NamedNodes:
 
 
 class RelationDataBase(ABC):
-    def __init__(self, op: Callable, *, is_negated: bool = False, is_optional: bool = False):
+    def __init__(
+        self, rel_key: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
+    ):
         self.op = op
         self.is_negated = is_negated
         self.is_optional = is_optional
@@ -38,8 +48,10 @@ class RelationDataBase(ABC):
 
 
 class RelationData(RelationDataBase):
-    def __init__(self, op: Callable, *, is_negated: bool = False, is_optional: bool = False):
-        super().__init__(op, is_negated=is_negated, is_optional=is_optional)
+    def __init__(
+        self, rel_key: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
+    ):
+        super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
 
     def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
         return self.op(this_node, that_node)
@@ -48,13 +60,14 @@ class RelationData(RelationDataBase):
 class RelationWithStrArgData(RelationDataBase):
     def __init__(
         self,
+        rel_key: str,
         op: Callable,
-        arg: List[Tree],
         *,
+        arg: List[Tree],
         is_negated: bool = False,
         is_optional: bool = False,
     ):
-        super().__init__(op, is_negated=is_negated, is_optional=is_optional)
+        super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
         self.arg = arg
 
     def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
@@ -63,9 +76,15 @@ class RelationWithStrArgData(RelationDataBase):
 
 class RelationWithNumArgData(RelationDataBase):
     def __init__(
-        self, op: Callable, arg: int, *, is_negated: bool = False, is_optional: bool = False
+        self,
+        rel_key: str,
+        op: Callable,
+        *,
+        arg: int,
+        is_negated: bool = False,
+        is_optional: bool = False,
     ):
-        super().__init__(op, is_negated=is_negated, is_optional=is_optional)
+        super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
         self.arg = arg
 
     def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
@@ -74,9 +93,15 @@ class RelationWithNumArgData(RelationDataBase):
 
 class MultiRelationData(RelationWithNumArgData):
     def __init__(
-        self, op: Callable, arg: int, *, is_negated: bool = False, is_optional: bool = False
+        self,
+        rel_key: str,
+        op: Callable,
+        *,
+        arg: int,
+        is_negated: bool = False,
+        is_optional: bool = False,
     ):
-        super().__init__(op, arg, is_negated=is_negated, is_optional=is_optional)
+        super().__init__(rel_key, op, arg=arg, is_negated=is_negated, is_optional=is_optional)
 
 
 class AndCondition:
@@ -96,9 +121,6 @@ class AndCondition:
 class NotAndCondition:
     def __init__(self, *, conditions: List[AndCondition]):
         self.conditions = conditions
-        self.toggle_negated()
-
-    def toggle_negated(self):
         for condition in self.conditions:
             condition.toggle_negated()
 
@@ -108,11 +130,53 @@ AND_CONDITIONS = List[Union[AndCondition, NotAndCondition]]
 
 class TregexMatcherBase:  # {{{
     @classmethod
-    def match_and(
+    def match_id(
+        cls, node: Tree, id: str, *, is_negated: bool = False, use_basic_cat: bool = False
+    ) -> bool:
+        attr = "basic_category" if use_basic_cat else "label"
+        value = getattr(node, attr)
+
+        if value is None:
+            return is_negated
+        else:
+            return (value == id) != is_negated
+
+    @classmethod
+    def match_regex(
+        cls, node: Tree, regex: str, *, is_negated: bool = False, use_basic_cat: bool = False
+    ) -> bool:
+        attr = "basic_category" if use_basic_cat else "label"
+        value = getattr(node, attr)
+
+        if value is None:
+            return is_negated
+        else:
+            # convert regex to standard python regex
+            flag = ""
+            while regex[-1] != "/":
+                flag += regex[-1]
+                regex = regex[:-1]
+
+            regex = regex[1:-1]
+            if flag:
+                regex = "(?" + "".join(set(flag)) + ")" + regex
+
+            return (re.search(regex, value) is not None) != is_negated
+
+    @classmethod
+    def match_blank(
         cls,
-        this_node: Tree,
-        this_name: Optional[str],
-        and_condition: AndCondition,
+        node: Tree,
+        value: Optional[str] = None,
+        *,
+        is_negated: bool = False,
+        use_basic_cat: bool = False,
+    ) -> bool:
+        return not is_negated
+
+    @classmethod
+    def match_and(
+        cls, this_node: Tree, this_name: Optional[str], and_condition: AndCondition
     ) -> Tuple[int, dict]:
         condition_func, those, is_negated, is_optional = (
             and_condition.condition_func,
@@ -140,7 +204,7 @@ class TregexMatcherBase:  # {{{
             match_count, backrefs_map = cls._match_optional_condition(
                 this_node, those, condition_func
             )
-        return (match_count, backrefs_map)
+        return match_count, backrefs_map
 
     @classmethod
     def match_not_and(
@@ -179,7 +243,7 @@ class TregexMatcherBase:  # {{{
                 break
 
         # match_count returned by not_and should be either 0 or 1
-        return (match_count, backrefs_map)
+        return match_count, backrefs_map
 
     @classmethod
     def _match_condition(
@@ -205,7 +269,7 @@ class TregexMatcherBase:  # {{{
                         backrefs_map[name].append(node)
                 match_count += 1
 
-        return (match_count, backrefs_map)
+        return match_count, backrefs_map
 
     @classmethod
     def _match_negated_condition(
@@ -216,11 +280,10 @@ class TregexMatcherBase:  # {{{
     ) -> Tuple[int, dict]:
         those_nodes = those.nodes
 
-        match_count = 0
         for that_node in those_nodes:
             if condition_func(this_node, that_node):
-                return (0, {})
-        return (1, {})
+                return 0, {}
+        return 1, {}
 
     @classmethod
     def _match_optional_condition(
@@ -232,59 +295,38 @@ class TregexMatcherBase:  # {{{
         that_name, those_nodes = those.name, those.nodes
 
         if that_name is None:
-            return (1, {})
+            return 1, {}
 
         backrefs_map: Dict[str, list] = {}
         backrefs_map[that_name] = []
         for that_node in those_nodes:
             if condition_func(this_node, that_node):
                 backrefs_map[that_name].append(that_node)
-        return (1, backrefs_map)
+        return 1, backrefs_map
 
 
 # }}}
+
+
 class TregexMatcher(TregexMatcherBase):
     @classmethod
-    def match_any(cls, trees: List[Tree]) -> Generator[Tree, Any, None]:
-        for tree in trees:
-            for node in tree.preorder_iter():
-                yield node
-
-    @classmethod
-    def match_or_nodes(
-        cls, trees: List[Tree], or_nodes: List[str], is_negated: bool = False
+    def match_node_descriptions(
+        cls, descriptions: "NodeDescriptions", trees: List[Tree]
     ) -> Generator[Tree, Any, None]:
-        def condition_func(candidate, or_nodes) -> bool:
-            return (candidate in or_nodes) != is_negated
-
-        if or_nodes[0] == "@":
-            attr = "basic_category"
-            or_nodes.pop(0)
-        else:
-            attr = "label"
+        is_negated = descriptions.is_negated
+        use_basic_cat = descriptions.use_basic_cat
 
         for tree in trees:
             for node in tree.preorder_iter():
-                if condition_func(getattr(node, attr), or_nodes):
-                    yield node
-
-    @classmethod
-    def match_regex(
-        cls, trees: List[Tree], regex: str, is_negated: bool = False
-    ) -> Generator[Tree, Any, None]:
-        pattern = re.compile(regex)
-        for tree in trees:
-            for node in tree.preorder_iter():
-                if node.label is None:
-                    if is_negated:
+                for desc in descriptions:
+                    if desc.condition_func(
+                        node, desc.value, is_negated=is_negated, use_basic_cat=use_basic_cat
+                    ):
                         yield node
-                    continue
-
-                if (pattern.search(node.label) is None) == is_negated:
-                    yield node
+                        break
 
     @classmethod
-    def and_(
+    def _match_and_conditions_cur_node(
         cls,
         this_node: Tree,
         this_name: Optional[str],
@@ -293,7 +335,14 @@ class TregexMatcher(TregexMatcherBase):
         match_count = 1
         backrefs_map: Dict[str, list] = {}
 
-        # prevent the same name is given to different nodes
+        # track names to prevent giving different nodes the same name in a
+        # conjunction, imitating Stanford Tregex:
+        # ```
+        # echo "(A (B 1) (C 1))" | tregex.sh "A < B=n < C=n" -filter
+        # ...
+        # Error parsing expression: A < B=n < C=n
+        # Parse exception: edu.stanford.nlp.trees.tregex.TregexParseException: Could not parse A < B=n < C=n
+        # ```
         names = [this_name] if this_name is not None else []
 
         for and_condition in and_conditions:
@@ -313,7 +362,7 @@ class TregexMatcher(TregexMatcherBase):
                     if that_name in names:
                         raise SystemExit(
                             f'Error!!  The name "{that_name}" has been assigned multiple times'
-                            " in a single chain of and_conditions."
+                            " in a conjunction."
                         )
                     else:
                         names.append(that_name)
@@ -325,33 +374,87 @@ class TregexMatcher(TregexMatcherBase):
                 )
 
             if match_count_cur_cond == 0:
-                return (0, {})
+                return 0, {}
 
             match_count *= match_count_cur_cond
             for name, node_list in backrefs_map_cur_cond.items():
                 backrefs_map[name] = node_list
 
-        return (match_count, backrefs_map)
+        return match_count, backrefs_map
 
     @classmethod
-    def or_(
+    def match_and_conditions(
         cls,
-        these_nodes: List[Tree],
-        this_name: Optional[str],
+        named_nodes: NamedNodes,
+        and_conditions: AND_CONDITIONS,
+    ) -> Tuple[List[Tree], dict]:
+        res: List[Tree] = []
+        backrefs_map: Dict[str, list] = {}
+
+        this_name = named_nodes.name
+        for this_node in named_nodes.nodes:
+            match_count_cur_node, backrefs_map_cur_node = cls._match_and_conditions_cur_node(
+                this_node, this_name, and_conditions
+            )
+            res += [this_node for _ in range(match_count_cur_node)]
+            for name, nodes in backrefs_map_cur_node.items():
+                backrefs_map[name] = backrefs_map.get(name, []) + nodes
+
+        return res, backrefs_map
+
+    @classmethod
+    def match_or_conditions(
+        cls,
+        named_nodes: NamedNodes,
         or_conditions: List[AND_CONDITIONS],
     ) -> Tuple[List[Tree], dict]:
         res: List[Tree] = []
         backrefs_map: Dict[str, list] = {}
-        for this_node in these_nodes:
-            for and_conditions in or_conditions:
-                match_count, backrefs_map_cur_conds = cls.and_(
-                    this_node, this_name, and_conditions
-                )
+        for and_conditions in or_conditions:
+            res_cur_and_conds, backrefs_map_cur_and_conds = cls.match_and_conditions(
+                named_nodes, and_conditions
+            )
 
-                res += [this_node for _ in range(match_count)]
-                for name, node_list in backrefs_map_cur_conds.items():
-                    backrefs_map[name] = backrefs_map.get(name, []) + node_list
-        return (res, backrefs_map)
+            res.extend(res_cur_and_conds)
+            for name, nodes in backrefs_map_cur_and_conds.items():
+                backrefs_map[name] = backrefs_map.get(name, []) + nodes
+        return res, backrefs_map
+
+
+NodeDescription = namedtuple("NodeDescription", ("condition_func", "value"))
+
+
+class NodeDescriptions:
+    def __init__(
+        self,
+        node_descriptions: List[NodeDescription],
+        *,
+        is_negated: bool = False,
+        use_basic_cat: bool = False,
+    ):
+        self.descriptions = node_descriptions
+        self.is_negated = is_negated
+        self.use_basic_cat = use_basic_cat
+
+    def __iter__(self) -> Iterator[NodeDescription]:
+        return iter(self.descriptions)
+
+    def __repr__(self) -> str:
+        string = "".join(desc.value for desc in self.descriptions)
+        if self.use_basic_cat:
+            string = "@" + string
+        if self.is_negated:
+            string = "!" + string
+        return string
+
+    def add_description(self, other_description: NodeDescription):
+        self.descriptions.append(other_description)
+
+    def toggle_negated(self):
+        self.is_negated = not self.is_negated
+
+    def toggle_use_basic_cat(self):
+        self.use_basic_cat = not self.use_basic_cat
 
 
 class TregexPattern:
@@ -457,6 +560,7 @@ class TregexPattern:
     t_MULTI_RELATION = "|".join(map(re.escape, multi_rels))
 
     t_BLANK = r"__"
+    t_REGEX = r"/[^/\n\r]*/[ix]*"
     t_NOT = r"!"
     t_OPTIONAL = r"\?"
     t_AND = r"&"  # in `NP < NN | < NNS & > S`, `&` takes precedence over `|`
@@ -473,18 +577,6 @@ class TregexPattern:
     t_TERMINATOR = r";"
     t_ignore = " \r\t"
 
-    def t_REGEX(self, t):
-        r"/[^/\n\r]*/[ix]*"
-        flag = ""
-        while t.value[-1] != "/":
-            flag += t.value[-1]
-            t.value = t.value[:-1]
-
-        t.value = t.value[1:-1]
-        if flag:
-            t.value = "(?" + "".join(set(flag)) + ")" + t.value
-        return t
-
     def t_error(self, t):
         raise SystemExit(f'Tokenization error: Illegal character "{t.value[0]}"')
 
@@ -498,7 +590,7 @@ class TregexPattern:
         self.pattern = tregex_pattern
 
     def findall(self, tree_string: str) -> List[Tree]:
-        trees = Tree.from_string(tree_string)
+        trees = Tree.fromstring(tree_string)
         parser = self.make_parser(trees)
         self._reset_lexer_state()
 
@@ -533,105 +625,89 @@ class TregexPattern:
             # https://github.com/dabeaz/ply/issues/215
             ("left", "IMAGINE_REDUCE"),
             ("left", "OR_REL"),
-            ("left", "OR_NODE"),
+            ("right", "OR_NODE"),
             ("nonassoc", "EQUAL"),
         )
 
-        # 1. Label description
-        # 1.1 simple label description
-        def p_id(p):
+        # 1. node description
+        def p_ID(p):
             """
-            or_nodes : ID
+            node_description : ID
             """
-            logging.debug("following rule: or_nodes -> ID")
-            p[0] = [p[1]]
+            # logging.debug("following rule: node_description -> ID")
+            p[0] = NodeDescription(TregexMatcher.match_id, p[1])
 
-        def p_at_or_nodes(p):
+        def p_REGEX(p):
             """
-            or_nodes : AT or_nodes
+            node_description : REGEX
             """
-            logging.debug("following rule: or_nodes -> AT or_nodes")
-            p[2].insert(0, p[1])
+            # logging.debug("following rule: node_description -> REGEX")
+            p[0] = NodeDescription(TregexMatcher.match_regex, p[1])
+
+        def p_BLANK(p):
+            """
+            node_description : BLANK
+            """
+            # logging.debug("following rule: node_description -> BLANK")
+            p[0] = NodeDescription(TregexMatcher.match_blank, p[1])
+
+        def p_not_node_descriptions(p):
+            """
+            node_descriptions : NOT node_descriptions
+            """
+            # logging.debug("following rule: node_descriptions -> NOT node_descriptions")
+            p[2].toggle_negated()
+
             p[0] = p[2]
 
-        def p_lparen_or_nodes_rparen(p):
+        def p_at_node_descriptions(p):
             """
-            or_nodes : LPAREN or_nodes RPAREN
+            node_descriptions : AT node_descriptions
             """
-            logging.debug("following rule: or_nodes -> LPAREN or_nodes RPAREN")
+            # logging.debug("following rule: node_descriptions -> AT node_descriptions")
+            p[2].toggle_use_basic_cat()
+
             p[0] = p[2]
 
-        def p_or_nodes(p):
+        def p_node_description(p):
             """
-            named_nodes : or_nodes %prec IMAGINE_REDUCE
+            node_descriptions : node_description
             """
-            logging.debug("following rule: named_nodes -> or_nodes")
-            p[0] = NamedNodes(
-                None,
-                list(TregexMatcher.match_or_nodes(trees, p[1], is_negated=False)),
-            )
+            # logging.debug("following rule: node_descriptions -> node_description")
+            p[0] = NodeDescriptions([p[1]])
 
-        def p_not_or_nodes(p):
+        def p_node_descriptions_or_node_node_description(p):
             """
-            named_nodes : NOT or_nodes
+            node_descriptions : node_descriptions OR_NODE node_description
             """
-            logging.debug("following rule: named_nodes -> NOT or_nodes")
-            p[0] = NamedNodes(
-                None, list(TregexMatcher.match_or_nodes(trees, p[2], is_negated=True))
-            )
+            # logging.debug("following rule: node_descriptions -> node_descriptions OR_NODE node_description")
+            p[1].add_description(p[3])
 
-        def p_regex(p):
-            """
-            named_nodes : REGEX
-            """
-            logging.debug("following rule: named_nodes -> REGEX")
-            p[0] = NamedNodes(
-                None,
-                list(node for node in TregexMatcher.match_regex(trees, p[1], is_negated=False)),
-            )
+            p[0] = p[1]
 
-        def p_not_regex(p):
+        def p_node_descriptions(p):
             """
-            named_nodes : NOT REGEX
+            named_nodes : node_descriptions
             """
-            logging.debug("following rule: named_nodes -> NOT REGEX")
-            p[0] = NamedNodes(
-                None,
-                list(node for node in TregexMatcher.match_regex(trees, p[2], is_negated=True)),
-            )
+            nodes = list(TregexMatcher.match_node_descriptions(p[1], trees))
+            describing_str = str(p[1])
+            logging.debug(f"following rule: named_nodes -> {describing_str}")
 
-        def p_blank(p):
-            """
-            named_nodes : BLANK
-            """
-            logging.debug("following rule: named_nodes -> BLANK")
-            p[0] = NamedNodes(None, list(TregexMatcher.match_any(trees)))
+            p[0] = NamedNodes(None, nodes, describing_str)
 
-        def p_named_nodes_equal_id(p):
+        def p_lparen_node_description_rparen(p):
             """
-            named_nodes : named_nodes EQUAL ID
+            node_description : LPAREN node_description RPAREN
             """
-            logging.debug("following rule: named_nodes -> named_nodes EQUAL ID")
-            name = p[3]
-            nodes = p[1].nodes
-            self.backrefs_map[name] = nodes
+            logging.debug("following rule: node_description -> LPAREN node_description RPAREN")
+            p[0] = p[2]
 
-            p[0] = NamedNodes(name, nodes)
-
-        def p_named_nodes_or_node_named_nodes(p):
+        def p_lparen_node_descriptions_rparen(p):
             """
-            named_nodes : named_nodes OR_NODE named_nodes
+            node_descriptions : LPAREN node_descriptions RPAREN
             """
-            logging.debug("following rule: named_nodes -> named_nodes OR_NODE named_nodes")
-            these, those = p[1], p[3]
-            if these.name is not None:
-                raise SystemExit(
-                    "Error!!  It is not allowd to name a node within the node description. You"
-                    f' need to remove the "{these.name}" designation or place it at the end of'
-                    " the node description."
-                )
-            these.merge(those)
-            p[0] = these
+            logging.debug("following rule: node_descriptions -> LPAREN node_descriptions RPAREN")
+            p[0] = p[2]
 
         def p_lparen_named_nodes_rparen(p):
             """
@@ -640,6 +716,19 @@ class TregexPattern:
             logging.debug("following rule: named_nodes -> LPAREN named_nodes RPAREN")
             p[0] = p[2]
 
+        def p_named_nodes_equal_id(p):
+            """
+            named_nodes : named_nodes EQUAL ID
+            """
+            name = p[3]
+            named_nodes = p[1]
+            logging.debug(f"following rule: {named_nodes.describing_str} = {name}")
+
+            named_nodes.set_name(name)
+            self.backrefs_map[name] = named_nodes.nodes
+
+            p[0] = named_nodes
+
         # 2. relation
         # 2.1 RELATION
         def p_relation(p):
@@ -647,7 +736,8 @@ class TregexPattern:
             relation_data : RELATION
             """
             logging.debug("following rule: relation_data -> RELATION")
-            p[0] = RelationData(self.RELATION_MAP[p[1]])
+            rel_key = p[1]
+            p[0] = RelationData(rel_key, self.RELATION_MAP[rel_key])
 
         # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_named_nodes_rparen(p):
@@ -657,7 +747,10 @@ class TregexPattern:
             logging.debug(
                 "following rule: relation_data -> REL_W_STR_ARG LPAREN named_nodes RPAREN"
             )
-            p[0] = RelationWithStrArgData(self.REL_W_STR_ARG_MAP[p[1]], p[3].nodes)
+            rel_key = p[1]
+            p[0] = RelationWithStrArgData(
+                rel_key, self.REL_W_STR_ARG_MAP[rel_key], arg=p[3].nodes
+            )
 
         # 2.3 REL_W_NUM_ARG
         def p_relation_number(p):
@@ -665,10 +758,10 @@ class TregexPattern:
             relation_data : RELATION NUMBER
             """
             logging.debug("following rule: relation_data -> RELATION NUMBER")
-            rel, num = p[1:]
-            if rel.endswith("-"):
+            rel_key, num = p[1:]
+            if rel_key.endswith("-"):
                 num = f"-{num}"
-            p[0] = RelationWithNumArgData(self.REL_W_NUM_ARG_MAP[rel], int(num))
+            p[0] = RelationWithNumArgData(rel_key, self.REL_W_NUM_ARG_MAP[rel_key], arg=int(num))
 
         def p_not_relation_data(p):
             """
@@ -739,6 +832,7 @@ class TregexPattern:
             """
             logging.debug("following rule: and_conditions -> and_conditions not_and_condition")
             p[1].append(p[2])
+
             p[0] = p[1]
 
         def p_relation_data_equal_id(p):
@@ -787,20 +881,23 @@ class TregexPattern:
                 'following rule: and_conditions_multi_relation -> MULTI_RELATION "{"'
                 ' named_nodes_list "}"'
             )
-            op = self.MULTI_RELATION_MAP[p[1]]
+            rel_key = p[1]
+            op = self.MULTI_RELATION_MAP[rel_key]
             named_nodes_list = p[3]
 
             conditions = []
 
             for i, named_nodes in enumerate(named_nodes_list, 1):
-                multi_relation_data = MultiRelationData(op, i)
+                multi_relation_data = MultiRelationData(rel_key, op, arg=i)
                 conditions.append(
                     AndCondition(relation_data=multi_relation_data, named_nodes=named_nodes)
                 )
 
-            any_named_nodes = NamedNodes(None, list(TregexMatcher.match_any(trees)))
+            any_named_nodes = NamedNodes(
+                None, list(node for tree in trees for node in tree.preorder_iter())
+            )
             multi_relation_data = MultiRelationData(
-                op, i + 1, is_negated=True  # type:ignore
+                rel_key, op, arg=i + 1, is_negated=True  # type:ignore
             )
             conditions.append(
                 AndCondition(relation_data=multi_relation_data, named_nodes=any_named_nodes)
@@ -845,19 +942,23 @@ class TregexPattern:
             logging.debug("following rule: and_conditions : LPAREN and_conditions RPAREN")
             p[0] = p[2]
 
+        def p_and_conditions_or_and_conditions(p):
+            """
+            or_conditions : and_conditions OR_REL and_conditions
+            """
+            logging.debug(
+                "following rule: or_conditions -> and_conditions OR_REL and_conditions"
+            )
+
+            p[0] = [p[1], p[3]]
+
         def p_and_conditions(p):
             """
-            or_conditions : and_conditions
+            or_conditions : or_conditions OR_REL and_conditions
             """
-            logging.debug("following rule: or_conditions -> and_conditions")
-            p[0] = [p[1]]
+            logging.debug("following rule: or_conditions -> or_conditions OR_REL and_conditions")
+            p[1].append(p[2])
 
-        def p_or_conditions_or_or_conditions(p):
-            """
-            or_conditions : or_conditions OR_REL or_conditions
-            """
-            logging.debug("following rule: or_conditions -> or_conditions OR_REL or_conditions")
-            p[1].extend(p[3])
             p[0] = p[1]
 
         def p_lparen_or_conditions_rparen(p):
@@ -867,12 +968,27 @@ class TregexPattern:
             logging.debug("following rule: or_conditions -> LPAREN or_conditions RPAREN")
             p[0] = p[2]
 
+        def p_not_lparen_and_conditions_rparen(p):
+            """
+            not_and_condition : NOT LPAREN and_conditions RPAREN
+                              | NOT LBRACKET and_conditions RBRACKET
+            """
+            logging.debug(
+                f"following rule: not_and_condition -> NOT {p[2]} and_conditions {p[4]}"
+            )
+            and_conditions = p[3]
+
+            not_and_condition = NotAndCondition(conditions=and_conditions)
+
+            p[0] = not_and_condition
+
         def p_not_lparen_or_conditions_rparen(p):
             """
             not_and_conditions : NOT LPAREN or_conditions RPAREN
+                               | NOT LBRACKET or_conditions RBRACKET
             """
             logging.debug(
-                "following rule: not_and_conditions -> NOT LPAREN or_conditions RPAREN"
+                f"following rule: not_and_conditions -> NOT {p[2]} or_conditions {p[4]}"
             )
             or_conditions = p[3]
             not_and_conditions = []
@@ -905,23 +1021,45 @@ class TregexPattern:
             logging.debug("following rule: or_conditions -> LBRACKET or_conditions RBRACKET")
             p[0] = p[2]
 
+        def p_named_nodes_and_conditions(p):
+            """
+            named_nodes : named_nodes and_conditions
+            """
+            logging.debug("following rule: named_nodes -> named_nodes and_conditions")
+            named_nodes = p[1]
+            or_conditions = p[2]
+
+            res, backrefs_map = TregexMatcher.match_and_conditions(named_nodes, or_conditions)
+            for name, node_list in backrefs_map.items():
+                logging.debug(
+                    "Mapping {} to nodes:\n  {}".format(
+                        name, "\n  ".join(node.tostring() for node in node_list)
+                    )
+                )
+                self.backrefs_map[name] = node_list
+
+            named_nodes.set_nodes(res)
+            p[0] = named_nodes
+
         def p_named_nodes_or_conditions(p):
             """
             named_nodes : named_nodes or_conditions
             """
             logging.debug("following rule: named_nodes -> named_nodes or_conditions")
-            this_name, these_nodes = p[1].name, p[1].nodes
+            named_nodes = p[1]
             or_conditions = p[2]
-            res, backrefs_map = TregexMatcher.or_(these_nodes, this_name, or_conditions)
+
+            res, backrefs_map = TregexMatcher.match_or_conditions(named_nodes, or_conditions)
             for name, node_list in backrefs_map.items():
                 logging.debug(
                     "Mapping {} to nodes:\n  {}".format(
-                        name, "\n  ".join(node.to_string() for node in node_list)
+                        name, "\n  ".join(node.tostring() for node in node_list)
                     )
                 )
                 self.backrefs_map[name] = node_list
 
-            p[0] = NamedNodes(this_name, res)
+            named_nodes.set_nodes(res)
+            p[0] = named_nodes
 
         def p_named_nodes(p):
             """
@@ -935,7 +1073,7 @@ class TregexPattern:
         def p_named_nodes_list_named_nodes(p):
             """
             named_nodes_list : named_nodes_list named_nodes
-                               | named_nodes_list named_nodes TERMINATOR
+                             | named_nodes_list named_nodes TERMINATOR
             """
             logging.debug("following rule: named_nodes_list -> named_nodes_list named_nodes")
             p[1].append(p[2])

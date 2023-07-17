@@ -12,31 +12,20 @@ from .base_tmpl import tree as tree_string
 class TestTree(BaseTmpl):
     def setUp(self):
         self.tree_string = tree_string
-        self.tree = Tree.from_string(self.tree_string)[0]
+        self.tree = Tree.fromstring(self.tree_string)[0]
         return super().setUp()
 
-    def test_tokenize(self):
-        tokens = [match.group() for match in Tree._tokenize(self.tree_string)]
-        # fmt: off
-        tree_list = ['(', 'ROOT', '(', 'S', '(', 'NP', '(', 'EX', 'There', ')', ')', '(', 'VP', '(', 'VBD', 'was',
-                     ')', '(', 'NP', '(', 'NP', '(', 'DT', 'no', ')', '(', 'NN', 'possibility', ')', ')', '(',
-                     'PP', '(', 'IN', 'of', ')', '(', 'S', '(', 'VP', '(', 'VBG', 'taking', ')', '(', 'NP', '(',
-                     'DT', 'a', ')', '(', 'NN', 'walk', ')', ')', '(', 'NP', '(', 'DT', 'that', ')', '(', 'NN',
-                     'day', ')', ')', ')', ')', ')', ')', ')', '(', '.', '.', ')', ')', ')']
-        # fmt: on
-        self.assertEqual(tokens, tree_list)
-
-    def test_from_string(self):
+    def test_fromstring(self):
         tree_string = "(ROOT (S (NP (EX There))))"
         # a tree with unpaired parenthesis is illegal
-        self.assertRaises(ValueError, Tree.from_string, tree_string.rstrip(")"))
-        self.assertRaises(ValueError, Tree.from_string, tree_string.lstrip("("))
+        self.assertRaises(ValueError, Tree.fromstring, tree_string.rstrip(")"))
+        self.assertRaises(ValueError, Tree.fromstring, tree_string.lstrip("("))
 
         # see whether extra levels of root with None label has been removed
-        self.assertEqual(Tree.from_string(f"(({tree_string}))"), Tree.from_string(tree_string))
+        self.assertEqual(Tree.fromstring(f"(({tree_string}))"), Tree.fromstring(tree_string))
 
     def test_set_label(self):
-        tree = Tree.from_string(self.tree_string)[0]
+        tree = Tree.fromstring(self.tree_string)[0]
         new_label = "TOOR"  # inverse of ROOT
         tree.set_label(new_label)
         self.assertEqual(tree.label, new_label)
@@ -46,7 +35,7 @@ class TestTree(BaseTmpl):
     def test_eq(self):
         from copy import deepcopy
 
-        tree = Tree.from_string(self.tree_string)[0]
+        tree = Tree.fromstring(self.tree_string)[0]
 
         # compare Tree with other classes
         self.assertNotEqual(tree, "non-Tree object")
@@ -86,11 +75,11 @@ class TestTree(BaseTmpl):
         self.assertRaises(TypeError, self.tree.__getitem__, "string")
 
     def test_len(self):
-        tree = Tree.from_string(self.tree_string)[0]
+        tree = Tree.fromstring(self.tree_string)[0]
         self.assertEqual(len(tree), len(tree.children))
 
     def test_num_children(self):
-        tree = Tree.from_string(self.tree_string)[0]
+        tree = Tree.fromstring(self.tree_string)[0]
         self.assertEqual(tree.num_children, len(tree.children))
 
     def test_sister_index(self):
@@ -129,11 +118,11 @@ class TestTree(BaseTmpl):
         tree.children.append(Tree())
         self.assertFalse(tree.is_pre_terminal)
 
-    def test_to_string(self):
-        tree = Tree.from_string(self.tree_string)[0]
+    def test_tostring(self):
+        tree = Tree.fromstring(self.tree_string)[0]
         # suppress onto one line
         tree_string = re.sub(r"\n\s+", " ", self.tree_string.strip())
-        self.assertEqual(tree.to_string(), tree_string)
+        self.assertEqual(tree.tostring(), tree_string)
 
     def test_root(self):
         child = self.tree[0]

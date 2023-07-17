@@ -321,42 +321,50 @@ class Tree:
             raise TypeError(f"label must be str, not {type(label).__name__}")
 
     @classmethod
-    def _tokenize(cls, string: str):
-        """
-        e.g. "(NP \n(EX There))" -> ["(", "NP", ")", "(", "EX", "There", ")", )"]
-        """
-        for match in re.finditer(r"[()]|[^\s()]+", string):
-            yield match
+    def fromstring(cls, string: str, brackets:str="()") -> List["Tree"]:
+        # this code block about `brackets` is borrowed from nltk.tree.fromstring
+        if not isinstance(brackets, str) or len(brackets) != 2:
+            raise TypeError("brackets must be a length-2 string")
+        if re.search(r"\s", brackets):
+            raise TypeError("whitespace brackets not allowed")
+        open_b, close_b = brackets
+        open_pattern, close_pattern = (re.escape(open_b), re.escape(close_b))
 
-    @classmethod
-    def from_string(cls, string: str) -> List["Tree"]:
-        root_ = Tree()
-        tree_current = root_
-        token_previous = None
-        stack_parent = []
+        root_: "Tree" = cls()
+        current_tree: "Tree" = root_
+        previous_token: Optional[str] = None
+        previous_bracket: Optional[str] = None
+        stack_parent: List["Tree"] = []
 
-        for match in cls._tokenize(string):
+        # store `token_re` to avoid repeated regex compiling
+        try:
+            token_re = getattr(cls, "token_re")
+        except AttributeError:
+            token_re = re.compile(rf"(?x) [{open_pattern}{close_pattern}] | [^\s{open_pattern}{close_pattern}]+")
+            setattr(cls, "token_re", token_re)
+
+        for match in token_re.finditer(string):
             token = match.group()
-            if token == "(":
-                stack_parent.append(tree_current)
+            if token == open_b:
+                stack_parent.append(current_tree)
 
-                tree_new = Tree(parent=tree_current)
-                tree_current.children.append(tree_new)
-                tree_current = tree_new
-            elif token == ")":
+                tree_new = cls(parent=current_tree)
+                current_tree.children.append(tree_new)
+                current_tree = tree_new
+                previous_bracket = token
+            elif token == close_b:
                 if not stack_parent:
-                    raise ValueError(
-                        "failed to build tree from string with unpaired parentheses"
-                    )
+                    raise ValueError("failed to build tree from string with unpaired parentheses")
                 else:
-                    tree_current = stack_parent.pop()
+                    current_tree = stack_parent.pop()
+                    previous_bracket = token
             else:
-                if token_previous is not None and token_previous not in ("(", ")"):
-                    tree_new = Tree(label=token, parent=tree_current)
-                    tree_current.children.append(tree_new)
+                if previous_token != "(":
+                    tree_new = cls(label=token, parent=current_tree)
+                    current_tree.children.append(tree_new)
                 else:
-                    tree_current.label = token
-            token_previous = token
+                    current_tree.label = token
+            previous_token = token
 
         if len(stack_parent) > 0:
             raise ValueError("failed to build tree from string with unpaired parentheses")
@@ -459,7 +467,7 @@ class Tree:
             return self.parent.children[sister_index_ + 1 :]  # type:ignore
         return None
 
-    def to_string(self) -> str:
+    def tostring(self) -> str:
         return repr(self)
 
     def preorder_iter(self) -> Generator["Tree", Any, None]:
