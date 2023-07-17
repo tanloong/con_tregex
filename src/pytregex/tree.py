@@ -321,14 +321,17 @@ class Tree:
             raise TypeError(f"label must be str, not {type(label).__name__}")
 
     @classmethod
-    def fromstring(cls, string: str, brackets:str="()") -> List["Tree"]:
+    def fromstring(cls, string: str, brackets: str = "()") -> List["Tree"]:
         # this code block about `brackets` is borrowed from nltk.tree.fromstring
         if not isinstance(brackets, str) or len(brackets) != 2:
             raise TypeError("brackets must be a length-2 string")
         if re.search(r"\s", brackets):
             raise TypeError("whitespace brackets not allowed")
-        open_b, close_b = brackets
-        open_pattern, close_pattern = (re.escape(open_b), re.escape(close_b))
+
+        open_b = brackets[0]
+        close_b = brackets[1]
+        open_pattern = re.escape(open_b)
+        close_pattern = re.escape(close_b)
 
         root_: "Tree" = cls()
         current_tree: "Tree" = root_
@@ -340,7 +343,9 @@ class Tree:
         try:
             token_re = getattr(cls, "token_re")
         except AttributeError:
-            token_re = re.compile(rf"(?x) [{open_pattern}{close_pattern}] | [^\s{open_pattern}{close_pattern}]+")
+            token_re = re.compile(
+                rf"(?x) [{open_pattern}{close_pattern}] | [^\s{open_pattern}{close_pattern}]+"
+            )
             setattr(cls, "token_re", token_re)
 
         for match in token_re.finditer(string):
@@ -354,7 +359,9 @@ class Tree:
                 previous_bracket = token
             elif token == close_b:
                 if not stack_parent:
-                    raise ValueError("failed to build tree from string with unpaired parentheses")
+                    raise ValueError(
+                        "failed to build tree from string with unpaired parentheses"
+                    )
                 else:
                     current_tree = stack_parent.pop()
                     previous_bracket = token

@@ -529,20 +529,10 @@ class TregexPattern:
         "MULTI_RELATION",
         "BLANK",
         "REGEX",
-        "NOT",
-        "OPTIONAL",
-        "AND",
         "OR_NODE",
         "OR_REL",
-        "LPAREN",
-        "RPAREN",
-        "LBRACKET",
-        "RBRACKET",
-        "EQUAL",
-        "AT",
         "NUMBER",
         "ID",
-        "TERMINATOR",
     ]
 
     # make sure long relations are checked first, or otherwise `>>` might
@@ -561,26 +551,16 @@ class TregexPattern:
 
     t_BLANK = r"__"
     t_REGEX = r"/[^/\n\r]*/[ix]*"
-    t_NOT = r"!"
-    t_OPTIONAL = r"\?"
-    t_AND = r"&"  # in `NP < NN | < NNS & > S`, `&` takes precedence over `|`
     t_OR_REL = r"\|\|"
     t_OR_NODE = r"\|"
-    t_LPAREN = r"\("
-    t_RPAREN = r"\)"
-    t_LBRACKET = r"\["
-    t_RBRACKET = r"\]"
-    t_EQUAL = r"="
-    t_AT = r"@"
     t_NUMBER = r"[0-9]+"
     t_ID = r"[^ 0-9\n\r(/|@!#&)=?[\]><~_.,$:{};][^ \n\r(/|@!#&)=?[\]><~.$:{};]*"
-    t_TERMINATOR = r";"
     t_ignore = " \r\t"
 
     def t_error(self, t):
         raise SystemExit(f'Tokenization error: Illegal character "{t.value[0]}"')
 
-    literals = "{}"
+    literals = "!?()[]{}@&=;"
 
     def __init__(self, tregex_pattern: str):
         self.lexer = lex.lex(module=self)
@@ -621,12 +601,11 @@ class TregexPattern:
             # keep consistency with Stanford Tregex
             # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
-            # ("left", "RELATION", "AND"),
             # https://github.com/dabeaz/ply/issues/215
             ("left", "IMAGINE_REDUCE"),
             ("left", "OR_REL"),
             ("right", "OR_NODE"),
-            ("nonassoc", "EQUAL"),
+            ("nonassoc", "="),
         )
 
         # 1. node description
@@ -653,18 +632,18 @@ class TregexPattern:
 
         def p_not_node_descriptions(p):
             """
-            node_descriptions : NOT node_descriptions
+            node_descriptions : '!' node_descriptions
             """
-            # logging.debug("following rule: node_descriptions -> NOT node_descriptions")
+            # logging.debug("following rule: node_descriptions -> ! node_descriptions")
             p[2].toggle_negated()
 
             p[0] = p[2]
 
         def p_at_node_descriptions(p):
             """
-            node_descriptions : AT node_descriptions
+            node_descriptions : '@' node_descriptions
             """
-            # logging.debug("following rule: node_descriptions -> AT node_descriptions")
+            # logging.debug("following rule: node_descriptions -> @ node_descriptions")
             p[2].toggle_use_basic_cat()
 
             p[0] = p[2]
@@ -697,28 +676,28 @@ class TregexPattern:
 
         def p_lparen_node_description_rparen(p):
             """
-            node_description : LPAREN node_description RPAREN
+            node_description : '(' node_description ')'
             """
-            logging.debug("following rule: node_description -> LPAREN node_description RPAREN")
+            logging.debug("following rule: node_description -> ( node_description )")
             p[0] = p[2]
 
         def p_lparen_node_descriptions_rparen(p):
             """
-            node_descriptions : LPAREN node_descriptions RPAREN
+            node_descriptions : '(' node_descriptions ')'
             """
-            logging.debug("following rule: node_descriptions -> LPAREN node_descriptions RPAREN")
+            logging.debug("following rule: node_descriptions -> ( node_descriptions )")
             p[0] = p[2]
 
         def p_lparen_named_nodes_rparen(p):
             """
-            named_nodes : LPAREN named_nodes RPAREN
+            named_nodes : '(' named_nodes ')'
             """
-            logging.debug("following rule: named_nodes -> LPAREN named_nodes RPAREN")
+            logging.debug("following rule: named_nodes -> ( named_nodes )")
             p[0] = p[2]
 
         def p_named_nodes_equal_id(p):
             """
-            named_nodes : named_nodes EQUAL ID
+            named_nodes : named_nodes '=' ID
             """
             name = p[3]
             named_nodes = p[1]
@@ -742,11 +721,9 @@ class TregexPattern:
         # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_named_nodes_rparen(p):
             """
-            relation_data : REL_W_STR_ARG LPAREN named_nodes RPAREN
+            relation_data : REL_W_STR_ARG '(' named_nodes ')'
             """
-            logging.debug(
-                "following rule: relation_data -> REL_W_STR_ARG LPAREN named_nodes RPAREN"
-            )
+            logging.debug("following rule: relation_data -> REL_W_STR_ARG ( named_nodes )")
             rel_key = p[1]
             p[0] = RelationWithStrArgData(
                 rel_key, self.REL_W_STR_ARG_MAP[rel_key], arg=p[3].nodes
@@ -765,17 +742,17 @@ class TregexPattern:
 
         def p_not_relation_data(p):
             """
-            relation_data : NOT relation_data
+            relation_data : '!' relation_data
             """
-            logging.debug("following rule: relation_data -> NOT relation_data")
+            logging.debug("following rule: relation_data -> ! relation_data")
             p[2].toggle_negated()
             p[0] = p[2]
 
         def p_optional_relation_data(p):
             """
-            relation_data : OPTIONAL relation_data
+            relation_data : "?" relation_data
             """
-            logging.debug("following rule: relation_data -> OPTIONAL relation_data")
+            logging.debug("following rule: relation_data -> ? relation_data")
             p[2].toggle_optional()
             p[0] = p[2]
 
@@ -790,16 +767,16 @@ class TregexPattern:
 
         def p_and_and_condition(p):
             """
-            and_condition : AND and_condition
+            and_condition : '&' and_condition
             """
-            logging.debug("following rule: and_condition -> AND and_condition")
+            logging.debug("following rule: and_condition -> & and_condition")
             p[0] = p[2]
 
         def p_and_not_and_condition(p):
             """
-            and_condition : AND not_and_condition
+            and_condition : '&' not_and_condition
             """
-            logging.debug("following rule: and_condition -> AND not_and_condition")
+            logging.debug("following rule: and_condition -> & not_and_condition")
             p[0] = p[2]
 
         def p_and_condition(p):
@@ -837,7 +814,7 @@ class TregexPattern:
 
         def p_relation_data_equal_id(p):
             """
-            and_conditions_backref : relation_data EQUAL ID
+            and_conditions_backref : relation_data '=' ID
             """
             logging.debug("and_conditions_backref -> relation_data EUQAL ID")
             and_conditions_backref = []
@@ -878,8 +855,8 @@ class TregexPattern:
             and_conditions_multi_relation : MULTI_RELATION "{" named_nodes_list "}"
             """
             logging.debug(
-                'following rule: and_conditions_multi_relation -> MULTI_RELATION "{"'
-                ' named_nodes_list "}"'
+                "following rule: and_conditions_multi_relation -> MULTI_RELATION {"
+                " named_nodes_list }"
             )
             rel_key = p[1]
             op = self.MULTI_RELATION_MAP[rel_key]
@@ -924,11 +901,9 @@ class TregexPattern:
 
         def p_not_and_conditions_multi_relation(p):
             """
-            not_and_condition : NOT and_conditions_multi_relation
+            not_and_condition : '!' and_conditions_multi_relation
             """
-            logging.debug(
-                "following rule: not_and_condition -> NOT and_conditions_multi_relation"
-            )
+            logging.debug("following rule: not_and_condition -> ! and_conditions_multi_relation")
             and_conditions = p[2]
 
             not_and_condition = NotAndCondition(conditions=and_conditions)
@@ -937,9 +912,9 @@ class TregexPattern:
 
         def p_lparen_and_conditions_rparen(p):
             """
-            and_conditions : LPAREN and_conditions RPAREN
+            and_conditions : '(' and_conditions ')'
             """
-            logging.debug("following rule: and_conditions : LPAREN and_conditions RPAREN")
+            logging.debug("following rule: and_conditions : ( and_conditions )")
             p[0] = p[2]
 
         def p_and_conditions_or_and_conditions(p):
@@ -963,19 +938,17 @@ class TregexPattern:
 
         def p_lparen_or_conditions_rparen(p):
             """
-            or_conditions : LPAREN or_conditions RPAREN
+            or_conditions : '(' or_conditions ')'
             """
-            logging.debug("following rule: or_conditions -> LPAREN or_conditions RPAREN")
+            logging.debug("following rule: or_conditions -> ( or_conditions )")
             p[0] = p[2]
 
         def p_not_lparen_and_conditions_rparen(p):
             """
-            not_and_condition : NOT LPAREN and_conditions RPAREN
-                              | NOT LBRACKET and_conditions RBRACKET
+            not_and_condition : '!' '(' and_conditions ')'
+                              | '!' '[' and_conditions ']'
             """
-            logging.debug(
-                f"following rule: not_and_condition -> NOT {p[2]} and_conditions {p[4]}"
-            )
+            logging.debug(f"following rule: not_and_condition -> ! {p[2]} and_conditions {p[4]}")
             and_conditions = p[3]
 
             not_and_condition = NotAndCondition(conditions=and_conditions)
@@ -984,12 +957,10 @@ class TregexPattern:
 
         def p_not_lparen_or_conditions_rparen(p):
             """
-            not_and_conditions : NOT LPAREN or_conditions RPAREN
-                               | NOT LBRACKET or_conditions RBRACKET
+            not_and_conditions : '!' '(' or_conditions ')'
+                               | '!' '[' or_conditions ']'
             """
-            logging.debug(
-                f"following rule: not_and_conditions -> NOT {p[2]} or_conditions {p[4]}"
-            )
+            logging.debug(f"following rule: not_and_conditions -> ! {p[2]} or_conditions {p[4]}")
             or_conditions = p[3]
             not_and_conditions = []
 
@@ -1016,9 +987,9 @@ class TregexPattern:
 
         def p_lbracket_or_conditions_rbracket(p):
             """
-            or_conditions : LBRACKET or_conditions RBRACKET
+            or_conditions : '[' or_conditions ']'
             """
-            logging.debug("following rule: or_conditions -> LBRACKET or_conditions RBRACKET")
+            logging.debug("following rule: or_conditions -> [ or_conditions ]")
             p[0] = p[2]
 
         def p_named_nodes_and_conditions(p):
@@ -1064,7 +1035,7 @@ class TregexPattern:
         def p_named_nodes(p):
             """
             named_nodes_list : named_nodes
-                             | named_nodes TERMINATOR
+                             | named_nodes ';'
             """
             logging.debug("following rule: named_nodes_list -> named_nodes")
             # List[List[Tree]]
@@ -1073,7 +1044,7 @@ class TregexPattern:
         def p_named_nodes_list_named_nodes(p):
             """
             named_nodes_list : named_nodes_list named_nodes
-                             | named_nodes_list named_nodes TERMINATOR
+                             | named_nodes_list named_nodes ';'
             """
             logging.debug("following rule: named_nodes_list -> named_nodes_list named_nodes")
             p[1].append(p[2])
