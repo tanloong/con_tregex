@@ -81,8 +81,11 @@ class MultiRelationData(RelationWithNumArgData):
 
 class AndCondition:
     def __init__(self, *, relation_data: RelationDataBase, named_nodes: NamedNodes):
-        for attr in ("condition_func", "is_negated", "is_optional"):
-            setattr(self, attr, getattr(relation_data, attr))
+        self.condition_func, self.is_negated, self.is_optional = (
+            relation_data.condition_func,
+            relation_data.is_negated,
+            relation_data.is_optional,
+        )
 
         self.named_nodes = named_nodes
 
@@ -111,7 +114,12 @@ class TregexMatcherBase:  # {{{
         this_name: Optional[str],
         and_condition: AndCondition,
     ) -> Tuple[int, dict]:
-        condition_func, those, is_negated, is_optional = and_condition.condition_func, and_condition.named_nodes, and_condition.is_negated, and_condition.is_optional
+        condition_func, those, is_negated, is_optional = (
+            and_condition.condition_func,
+            and_condition.named_nodes,
+            and_condition.is_negated,
+            and_condition.is_optional,
+        )
 
         # is_negated and is_optional should not be both True
         if is_negated and is_optional:
@@ -290,19 +298,22 @@ class TregexMatcher(TregexMatcherBase):
 
         for and_condition in and_conditions:
             if isinstance(and_condition, NotAndCondition):
-                match_count_cur_cond, backrefs_map_cur_cond = cls.match_not_and(this_node, this_name, and_condition)
+                match_count_cur_cond, backrefs_map_cur_cond = cls.match_not_and(
+                    this_node, this_name, and_condition
+                )
             else:
                 that_name = and_condition.named_nodes.name
                 if that_name is not None:
                     if and_condition.is_negated:
                         raise SystemExit(
-                            "Error!!  It is not allowed to name a node that is under the scope of a"
-                            f' negation operator. You need to remove the "{that_name}" designation.'
+                            "Error!!  It is not allowed to name a node that is under the scope"
+                            f' of a negation operator. You need to remove the "{that_name}"'
+                            " designation."
                         )
                     if that_name in names:
                         raise SystemExit(
-                            f'Error!!  The name "{that_name}" has been assigned multiple times in a'
-                            " single chain of and_conditions."
+                            f'Error!!  The name "{that_name}" has been assigned multiple times'
+                            " in a single chain of and_conditions."
                         )
                     else:
                         names.append(that_name)
@@ -322,7 +333,6 @@ class TregexMatcher(TregexMatcherBase):
 
         return (match_count, backrefs_map)
 
-
     @classmethod
     def or_(
         cls,
@@ -334,7 +344,9 @@ class TregexMatcher(TregexMatcherBase):
         backrefs_map: Dict[str, list] = {}
         for this_node in these_nodes:
             for and_conditions in or_conditions:
-                match_count, backrefs_map_cur_conds = cls.and_(this_node, this_name, and_conditions)
+                match_count, backrefs_map_cur_conds = cls.and_(
+                    this_node, this_name, and_conditions
+                )
 
                 res += [this_node for _ in range(match_count)]
                 for name, node_list in backrefs_map_cur_conds.items():
@@ -474,8 +486,7 @@ class TregexPattern:
         return t
 
     def t_error(self, t):
-        logging.critical("Tokenization error: Illegal character '%s'" % t.value[0])
-        raise SystemExit()
+        raise SystemExit(f'Tokenization error: Illegal character "{t.value[0]}"')
 
     literals = "{}"
 
@@ -493,8 +504,16 @@ class TregexPattern:
 
         return parser.parse(lexer=self.lexer)
 
-    def get_nodes(self, name: str) -> Optional[List[Tree]]:
-        return self.backrefs_map.get(name, None)
+    def get_nodes(self, name: str) -> List[Tree]:
+        try:
+            handled_nodes = self.backrefs_map[name]
+        except KeyError:
+            raise SystemExit(
+                f'Error!!  There is no matched node "{name}"!  Did you specify such a'
+                " label in the pattern?"
+            )
+        else:
+            return handled_nodes
 
     def _reset_lexer_state(self):
         """
@@ -606,8 +625,11 @@ class TregexPattern:
             logging.debug("following rule: named_nodes -> named_nodes OR_NODE named_nodes")
             these, those = p[1], p[3]
             if these.name is not None:
-                logging.critical(f"Error!!  It is not allowd to name a node within the node description. You need to remove the \"{these.name}\" designation or place it at the end of the node description.")
-                raise SystemExit()
+                raise SystemExit(
+                    "Error!!  It is not allowd to name a node within the node description. You"
+                    f' need to remove the "{these.name}" designation or place it at the end of'
+                    " the node description."
+                )
             these.merge(those)
             p[0] = these
 
@@ -719,11 +741,52 @@ class TregexPattern:
             p[1].append(p[2])
             p[0] = p[1]
 
+        def p_relation_data_equal_id(p):
+            """
+            and_conditions_backref : relation_data EQUAL ID
+            """
+            logging.debug("and_conditions_backref -> relation_data EUQAL ID")
+            and_conditions_backref = []
+            relation_data = p[1]
+            name = p[3]
+            those_nodes = self.get_nodes(name)
+
+            for that_node in those_nodes:
+                # backreferenced nodes should not be tracked by
+                # self.backrefs_map, as they themselves are already the
+                # tracking results, thus set "name" as None
+                named_nodes = NamedNodes(name=None, nodes=[that_node])
+                and_conditions_backref.append(
+                    AndCondition(relation_data=relation_data, named_nodes=named_nodes)
+                )
+
+            p[0] = and_conditions_backref
+
+        def p_and_conditions_and_conditions_backref(p):
+            """
+            and_conditions : and_conditions and_conditions_backref
+            """
+            logging.debug(
+                "following rule: and_conditions -> and_conditions and_conditions_backref"
+            )
+            p[1].extend(p[2])
+            p[0] = p[1]
+
+        def p_and_conditions_backref(p):
+            """
+            and_conditions : and_conditions_backref
+            """
+            logging.debug("following rule: and_conditions -> and_conditions_backref")
+            p[0] = p[1]
+
         def p_multi_relation_named_nodes(p):
             """
             and_conditions_multi_relation : MULTI_RELATION "{" named_nodes_list "}"
             """
-            logging.debug('following rule: and_conditions_multi_relation -> MULTI_RELATION "{" named_nodes_list "}"')
+            logging.debug(
+                'following rule: and_conditions_multi_relation -> MULTI_RELATION "{"'
+                ' named_nodes_list "}"'
+            )
             op = self.MULTI_RELATION_MAP[p[1]]
             named_nodes_list = p[3]
 
@@ -731,13 +794,17 @@ class TregexPattern:
 
             for i, named_nodes in enumerate(named_nodes_list, 1):
                 multi_relation_data = MultiRelationData(op, i)
-                conditions.append(AndCondition(relation_data=multi_relation_data, named_nodes=named_nodes))
+                conditions.append(
+                    AndCondition(relation_data=multi_relation_data, named_nodes=named_nodes)
+                )
 
             any_named_nodes = NamedNodes(None, list(TregexMatcher.match_any(trees)))
             multi_relation_data = MultiRelationData(
                 op, i + 1, is_negated=True  # type:ignore
             )
-            conditions.append(AndCondition(relation_data = multi_relation_data, named_nodes=any_named_nodes))
+            conditions.append(
+                AndCondition(relation_data=multi_relation_data, named_nodes=any_named_nodes)
+            )
 
             p[0] = conditions
 
@@ -745,7 +812,9 @@ class TregexPattern:
             """
             and_conditions : and_conditions and_conditions_multi_relation
             """
-            logging.debug("following rule: and_conditions -> and_conditions and_conditions_multi_relation")
+            logging.debug(
+                "following rule: and_conditions -> and_conditions and_conditions_multi_relation"
+            )
             p[1].extend(p[2])
             p[0] = p[1]
 
@@ -753,14 +822,16 @@ class TregexPattern:
             """
             and_conditions : and_conditions_multi_relation
             """
-            logging.debug('following rule: and_conditions -> and_conditions_multi_relation')
+            logging.debug("following rule: and_conditions -> and_conditions_multi_relation")
             p[0] = p[1]
 
         def p_not_and_conditions_multi_relation(p):
             """
             not_and_condition : NOT and_conditions_multi_relation
             """
-            logging.debug("following rule: not_and_condition -> NOT and_conditions_multi_relation")
+            logging.debug(
+                "following rule: not_and_condition -> NOT and_conditions_multi_relation"
+            )
             and_conditions = p[2]
 
             not_and_condition = NotAndCondition(conditions=and_conditions)
@@ -800,7 +871,9 @@ class TregexPattern:
             """
             not_and_conditions : NOT LPAREN or_conditions RPAREN
             """
-            logging.debug("following rule: not_and_conditions -> NOT LPAREN or_conditions RPAREN")
+            logging.debug(
+                "following rule: not_and_conditions -> NOT LPAREN or_conditions RPAREN"
+            )
             or_conditions = p[3]
             not_and_conditions = []
 
@@ -878,12 +951,12 @@ class TregexPattern:
 
         def p_error(p):
             if p:
-                logging.critical(
+                msg = (
                     f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token"
                     f" '{p.value}'"
                 )
             else:
-                logging.critical("Parsing Error at EOF")
-            raise SystemExit()
+                msg = "Parsing Error at EOF"
+            raise SystemExit(msg)
 
         return yacc.yacc(debug=True, start="expr")

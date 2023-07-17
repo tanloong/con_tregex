@@ -142,13 +142,6 @@ class TregexUI:
             logging.debug("Printing handles...")
             for handle in self.options.handles:
                 handled_nodes = pattern.get_nodes(handle)
-                if handled_nodes is None:
-                    logging.warning(
-                        f'Error!!  There is no matched node "{handle}"!  Did you specify such a'
-                        " label in the pattern?"
-                    )
-                    continue
-
                 for node in handled_nodes:
                     sys.stdout.write(f"{node}\n")
         else:
