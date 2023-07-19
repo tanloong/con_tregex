@@ -1,9 +1,19 @@
-# /home/tan/.local/share/stanford-tregex-2020-11-17/stanford-tregex-4.2.0-sources/edu/stanford/nlp/trees/tregex/Relation.java
 from abc import ABC, abstractmethod
 from collections import namedtuple
 import logging
 import re
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union, Iterator
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Never,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from ply import lex, yacc
 
@@ -12,23 +22,23 @@ from tree import Tree
 
 
 class NamedNodes:
-    def __init__(self, name: Optional[str], nodes: List[Tree], describing_str: str = ""):
+    def __init__(self, name: Optional[str], nodes: List[Tree], describing_str: str = "") -> None:
         self.name = name
         self.nodes = nodes
         self.describing_str = describing_str
 
-    def set_name(self, new_name: Optional[str]):
+    def set_name(self, new_name: Optional[str]) -> None:
         self.name = new_name
 
-    def set_nodes(self, new_nodes: List[Tree]):
+    def set_nodes(self, new_nodes: List[Tree]) -> None:
         self.nodes = new_nodes
 
-    def merge(self, other: "NamedNodes"):
+    def merge(self, other: "NamedNodes") -> None:
         self.name = other.name
         self.nodes.extend(other.nodes)
 
 
-class RelationDataBase(ABC):
+class AbstractRelationData(ABC):
     def __init__(
         self, rel_key: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
     ):
@@ -40,24 +50,24 @@ class RelationDataBase(ABC):
     def condition_func(self, this_node: Tree, that_node: Tree):
         raise NotImplementedError()
 
-    def toggle_negated(self):
+    def toggle_negated(self) -> None:
         self.is_negated = not self.is_negated
 
-    def toggle_optional(self):
+    def toggle_optional(self) -> None:
         self.is_optional = not self.is_optional
 
 
-class RelationData(RelationDataBase):
+class RelationData(AbstractRelationData):
     def __init__(
         self, rel_key: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
-    ):
+    ) -> None:
         super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
 
     def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
         return self.op(this_node, that_node)
 
 
-class RelationWithStrArgData(RelationDataBase):
+class RelationWithStrArgData(AbstractRelationData):
     def __init__(
         self,
         rel_key: str,
@@ -66,7 +76,7 @@ class RelationWithStrArgData(RelationDataBase):
         arg: List[Tree],
         is_negated: bool = False,
         is_optional: bool = False,
-    ):
+    ) -> None:
         super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
         self.arg = arg
 
@@ -74,7 +84,7 @@ class RelationWithStrArgData(RelationDataBase):
         return self.op(this_node, that_node, self.arg)
 
 
-class RelationWithNumArgData(RelationDataBase):
+class RelationWithNumArgData(AbstractRelationData):
     def __init__(
         self,
         rel_key: str,
@@ -83,7 +93,7 @@ class RelationWithNumArgData(RelationDataBase):
         arg: int,
         is_negated: bool = False,
         is_optional: bool = False,
-    ):
+    ) -> None:
         super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
         self.arg = arg
 
@@ -100,12 +110,15 @@ class MultiRelationData(RelationWithNumArgData):
         arg: int,
         is_negated: bool = False,
         is_optional: bool = False,
-    ):
+    ) -> None:
         super().__init__(rel_key, op, arg=arg, is_negated=is_negated, is_optional=is_optional)
 
 
+AND_CONDITIONS = List[Union["AndCondition", "NotAndCondition", "OptionalAndCondition"]]
+
+
 class AndCondition:
-    def __init__(self, *, relation_data: RelationDataBase, named_nodes: NamedNodes):
+    def __init__(self, *, relation_data: AbstractRelationData, named_nodes: NamedNodes):
         self.condition_func, self.is_negated, self.is_optional = (
             relation_data.condition_func,
             relation_data.is_negated,
@@ -114,21 +127,60 @@ class AndCondition:
 
         self.named_nodes = named_nodes
 
-    def toggle_negated(self):
+    def toggle_negated(self) -> None:
         self.is_negated = not self.is_negated
+
+    def get_node_name(self) -> Generator[Optional[str], Any, None]:
+        yield self.named_nodes.name
 
 
 class NotAndCondition:
-    def __init__(self, *, conditions: List[AndCondition]):
+    def __init__(self, *, conditions: AND_CONDITIONS) -> None:
         self.conditions = conditions
+        self.toggle_negated()
+
+    def toggle_negated(self) -> None:
         for condition in self.conditions:
-            condition.toggle_negated()
+            if isinstance(condition, AndCondition):
+                condition.toggle_negated()
+            elif isinstance(condition, NotAndCondition):
+                condition.toggle_negated()
+            elif isinstance(condition, OptionalAndCondition):
+                raise SystemExit("Error!!  You cannot negate an optional conjunction.")
+            else:
+                raise SystemExit(
+                    f'Error!!  Encountered unexpected condition type "{type(condition)}" when'
+                    " building negated conjunction."
+                )
+
+    def get_node_name(self) -> Generator[Optional[str], Any, None]:
+        for condition in self.conditions:
+            for name in condition.get_node_name():
+                yield name
 
 
-AND_CONDITIONS = List[Union[AndCondition, NotAndCondition]]
+class OptionalAndCondition:
+    def __init__(self, *, conditions: AND_CONDITIONS) -> None:
+        self.conditions = conditions
+
+    def get_node_name(self) -> Generator[Optional[str], Any, None]:
+        for condition in self.conditions:
+            for name in condition.get_node_name():
+                yield name
 
 
-class TregexMatcherBase:  # {{{
+class OptionalOrConditions:
+    def __init__(self, *, conditions: List[AND_CONDITIONS]) -> None:
+        self.conditions = conditions
+
+    def get_node_name(self) -> Generator[Optional[str], Any, None]:
+        for and_conditions in self.conditions:
+            for and_condition in and_conditions:
+                for name in and_condition.get_node_name():
+                    yield name
+
+
+class TregexMatcher:
     @classmethod
     def match_id(
         cls, node: Tree, id: str, *, is_negated: bool = False, use_basic_cat: bool = False
@@ -175,78 +227,7 @@ class TregexMatcherBase:  # {{{
         return not is_negated
 
     @classmethod
-    def match_and(
-        cls, this_node: Tree, this_name: Optional[str], and_condition: AndCondition
-    ) -> Tuple[int, dict]:
-        condition_func, those, is_negated, is_optional = (
-            and_condition.condition_func,
-            and_condition.named_nodes,
-            and_condition.is_negated,
-            and_condition.is_optional,
-        )
-
-        # is_negated and is_optional should not be both True
-        if is_negated and is_optional:
-            raise SystemExit("Error!!  Node cannot be both negated and optional.")
-
-        # is_negated=False, is_optional=False
-        if not is_negated and not is_optional:
-            match_count, backrefs_map = cls._match_condition(
-                this_node, this_name, those, condition_func
-            )
-        # is_negated=True, is_optional=False
-        elif is_negated:
-            match_count, backrefs_map = cls._match_negated_condition(
-                this_node, those, condition_func
-            )
-        # is_negated=False, is_optional=True
-        else:
-            match_count, backrefs_map = cls._match_optional_condition(
-                this_node, those, condition_func
-            )
-        return match_count, backrefs_map
-
-    @classmethod
-    def match_not_and(
-        cls,
-        this_node: Tree,
-        this_name: Optional[str],
-        not_and_condition: NotAndCondition,
-    ) -> Tuple[int, dict]:
-        conditions = not_and_condition.conditions
-        match_count = 0
-        backrefs_map: Dict[str, list] = {}
-
-        for condition in conditions:
-            if isinstance(condition, NotAndCondition):
-                match_count_cur_cond, _ = cls.match_not_and(this_node, this_name, condition)
-            else:
-                those = condition.named_nodes
-                that_name = those.name
-
-                if that_name is not None:
-                    raise SystemExit(
-                        "Error!!  It is not allowed to name a node that is under the scope of a"
-                        f' negation operator. You need to remove the "{that_name}" designation.'
-                    )
-
-                match_count_cur_cond, _ = cls.match_and(
-                    this_node,
-                    this_name,
-                    condition,
-                )
-
-            if match_count_cur_cond > 0:
-                match_count = 1
-                if this_name is not None:
-                    backrefs_map[this_name] = [this_node]
-                break
-
-        # match_count returned by not_and should be either 0 or 1
-        return match_count, backrefs_map
-
-    @classmethod
-    def _match_condition(
+    def _match_and_condition(
         cls,
         this_node: Tree,
         this_name: Optional[str],
@@ -272,7 +253,7 @@ class TregexMatcherBase:  # {{{
         return match_count, backrefs_map
 
     @classmethod
-    def _match_negated_condition(
+    def _match_and_condition_not(
         cls,
         this_node: Tree,
         those: NamedNodes,
@@ -286,7 +267,7 @@ class TregexMatcherBase:  # {{{
         return 1, {}
 
     @classmethod
-    def _match_optional_condition(
+    def _match_and_condition_optional(
         cls,
         this_node: Tree,
         those: NamedNodes,
@@ -304,11 +285,114 @@ class TregexMatcherBase:  # {{{
                 backrefs_map[that_name].append(that_node)
         return 1, backrefs_map
 
+    @classmethod
+    def match_and_condition(
+        cls, this_node: Tree, this_name: Optional[str], and_condition: AndCondition
+    ) -> Tuple[int, dict]:
+        condition_func, those, is_negated, is_optional = (
+            and_condition.condition_func,
+            and_condition.named_nodes,
+            and_condition.is_negated,
+            and_condition.is_optional,
+        )
 
-# }}}
+        # is_negated and is_optional should not be both True
+        if is_negated and is_optional:
+            raise SystemExit("Error!!  Node cannot be both negated and optional.")
 
+        # is_negated=False, is_optional=False
+        if not is_negated and not is_optional:
+            match_count, backrefs_map = cls._match_and_condition(
+                this_node, this_name, those, condition_func
+            )
+        # is_negated=True, is_optional=False
+        elif is_negated:
+            match_count, backrefs_map = cls._match_and_condition_not(
+                this_node, those, condition_func
+            )
+        # is_negated=False, is_optional=True
+        else:
+            match_count, backrefs_map = cls._match_and_condition_optional(
+                this_node, those, condition_func
+            )
+        return match_count, backrefs_map
 
-class TregexMatcher(TregexMatcherBase):
+    @classmethod
+    def match_not_and_condition(
+        cls,
+        this_node: Tree,
+        this_name: Optional[str],
+        not_and_condition: NotAndCondition,
+    ) -> Tuple[int, dict]:
+        """returned match_count should be either 0 or 1"""
+        match_count = 0
+        backrefs_map: Dict[str, list] = {}
+
+        conditions = not_and_condition.conditions
+        for condition in conditions:
+            if not isinstance(condition, AndCondition):
+                conditions = condition.conditions
+                match_count_cur_cond, _ = cls.match_and_conditions_cur_node(
+                    this_node, this_name, conditions
+                )
+            else:
+                match_count_cur_cond, _ = cls.match_and_condition(
+                    this_node, this_name, condition
+                )
+
+            if match_count_cur_cond > 0:
+                match_count = 1
+                if this_name is not None:
+                    backrefs_map[this_name] = [this_node]
+                break
+
+        return match_count, backrefs_map
+
+    @classmethod
+    def match_optional_and_condition(
+        cls,
+        this_node: Tree,
+        this_name: Optional[str],
+        optional_and_condition: OptionalAndCondition,
+    ) -> Tuple[int, dict]:
+        and_conditions = optional_and_condition.conditions
+        match_count, backrefs_map = cls.match_and_conditions_cur_node(
+            this_node, this_name, and_conditions
+        )
+
+        if match_count == 0:
+            match_count = 1
+            if this_name is not None:
+                backrefs_map[this_name] = [this_node]
+
+        return match_count, backrefs_map
+
+    @classmethod
+    def match_optional_or_conditions(
+        cls,
+        this_node: Tree,
+        this_name: Optional[str],
+        optional_or_conditions: OptionalOrConditions,
+    ):
+        match_count = 0
+        backrefs_map: Dict[str, list] = {}
+
+        for and_conditions in optional_or_conditions.conditions:
+            match_count_cur_and_conds, backrefs_map_cur_and_conds = (
+                cls.match_and_conditions_cur_node(this_node, this_name, and_conditions)
+            )
+
+            match_count += match_count_cur_and_conds
+            for name, nodes in backrefs_map_cur_and_conds.items():
+                backrefs_map[name] = backrefs_map.get(name, []) + nodes
+
+        if match_count == 0:
+            match_count = 1
+            if this_name is not None:
+                backrefs_map[this_name] = [this_node]
+
+        return match_count, backrefs_map
+
     @classmethod
     def match_node_descriptions(
         cls, descriptions: "NodeDescriptions", trees: List[Tree]
@@ -326,7 +410,7 @@ class TregexMatcher(TregexMatcherBase):
                         break
 
     @classmethod
-    def _match_and_conditions_cur_node(
+    def match_and_conditions_cur_node(
         cls,
         this_node: Tree,
         this_name: Optional[str],
@@ -347,15 +431,39 @@ class TregexMatcher(TregexMatcherBase):
 
         for and_condition in and_conditions:
             if isinstance(and_condition, NotAndCondition):
-                match_count_cur_cond, backrefs_map_cur_cond = cls.match_not_and(
+                # naming is invalid in negated conjunction/disjunction, imitating Stanford Tregex:
+                # ```
+                # echo '(A (B 1) (C 2))' | tregex.py 'A ![ < B=b | < C ]' -filter
+                # ...
+                # Error parsing expression: A ![ < B=b | < C ]
+                # Parse exception: edu.stanford.nlp.trees.tregex.TregexParseException: Could not parse A ![ < B=b | < C ]
+                #
+                # echo '(A (B 1) (C 2))' | tregex.py 'A !( < B=b < C )' -filter
+                # ...
+                # Error parsing expression: A !( < B=b < C )
+                # Parse exception: edu.stanford.nlp.trees.tregex.TregexParseException: Could not parse A !( < B=b < C )
+                # ```
+                for that_name in and_condition.get_node_name():
+                    if that_name is not None:
+                        raise SystemExit(
+                            "Error!!  It is invalid to name a node that is under the scope of a"
+                            f' negation operator. You need to remove the "{that_name}"'
+                            " designation."
+                        )
+
+                match_count_cur_cond, backrefs_map_cur_cond = cls.match_not_and_condition(
                     this_node, this_name, and_condition
                 )
-            else:
-                that_name = and_condition.named_nodes.name
+            elif isinstance(and_condition, OptionalAndCondition):
+                match_count_cur_cond, backrefs_map_cur_cond = cls.match_optional_and_condition(
+                    this_node, this_name, and_condition
+                )
+            elif isinstance(and_condition, AndCondition):
+                that_name = next(and_condition.get_node_name())
                 if that_name is not None:
                     if and_condition.is_negated:
                         raise SystemExit(
-                            "Error!!  It is not allowed to name a node that is under the scope"
+                            "Error!!  It is invalid to name a node that is under the scope"
                             f' of a negation operator. You need to remove the "{that_name}"'
                             " designation."
                         )
@@ -367,10 +475,19 @@ class TregexMatcher(TregexMatcherBase):
                     else:
                         names.append(that_name)
 
-                match_count_cur_cond, backrefs_map_cur_cond = cls.match_and(
+                match_count_cur_cond, backrefs_map_cur_cond = cls.match_and_condition(
                     this_node,
                     this_name,
                     and_condition,
+                )
+            elif isinstance(and_condition, OptionalOrConditions):
+                match_count_cur_cond, backrefs_map_cur_cond = cls.match_optional_or_conditions(
+                    this_node, this_name, and_condition
+                )
+            else:
+                raise SystemExit(
+                    f'Error!!  Encountered unexpected condition type "{type(and_condition)}"'
+                    " when matching conjuncting."
                 )
 
             if match_count_cur_cond == 0:
@@ -393,7 +510,7 @@ class TregexMatcher(TregexMatcherBase):
 
         this_name = named_nodes.name
         for this_node in named_nodes.nodes:
-            match_count_cur_node, backrefs_map_cur_node = cls._match_and_conditions_cur_node(
+            match_count_cur_node, backrefs_map_cur_node = cls.match_and_conditions_cur_node(
                 this_node, this_name, and_conditions
             )
             res += [this_node for _ in range(match_count_cur_node)]
@@ -410,6 +527,7 @@ class TregexMatcher(TregexMatcherBase):
     ) -> Tuple[List[Tree], dict]:
         res: List[Tree] = []
         backrefs_map: Dict[str, list] = {}
+
         for and_conditions in or_conditions:
             res_cur_and_conds, backrefs_map_cur_and_conds = cls.match_and_conditions(
                 named_nodes, and_conditions
@@ -431,7 +549,7 @@ class NodeDescriptions:
         *,
         is_negated: bool = False,
         use_basic_cat: bool = False,
-    ):
+    ) -> None:
         self.descriptions = node_descriptions
         self.is_negated = is_negated
         self.use_basic_cat = use_basic_cat
@@ -447,13 +565,13 @@ class NodeDescriptions:
             string = "!" + string
         return string
 
-    def add_description(self, other_description: NodeDescription):
+    def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
 
-    def toggle_negated(self):
+    def toggle_negated(self) -> None:
         self.is_negated = not self.is_negated
 
-    def toggle_use_basic_cat(self):
+    def toggle_use_basic_cat(self) -> None:
         self.use_basic_cat = not self.use_basic_cat
 
 
@@ -557,12 +675,12 @@ class TregexPattern:
     t_ID = r"[^ 0-9\n\r(/|@!#&)=?[\]><~_.,$:{};][^ \n\r(/|@!#&)=?[\]><~.$:{};]*"
     t_ignore = " \r\t"
 
-    def t_error(self, t):
+    def t_error(self, t) -> Never:
         raise SystemExit(f'Tokenization error: Illegal character "{t.value[0]}"')
 
     literals = "!?()[]{}@&=;"
 
-    def __init__(self, tregex_pattern: str):
+    def __init__(self, tregex_pattern: str) -> None:
         self.lexer = lex.lex(module=self)
         self.lexer.input(tregex_pattern)
 
@@ -576,18 +694,15 @@ class TregexPattern:
 
         return parser.parse(lexer=self.lexer)
 
-    def get_nodes(self, name: str) -> List[Tree]:
+    def get_nodes(self, name: str) -> Optional[List[Tree]]:
         try:
             handled_nodes = self.backrefs_map[name]
         except KeyError:
-            raise SystemExit(
-                f'Error!!  There is no matched node "{name}"!  Did you specify such a'
-                " label in the pattern?"
-            )
+            return None
         else:
             return handled_nodes
 
-    def _reset_lexer_state(self):
+    def _reset_lexer_state(self) -> None:
         """
         reset lexer.lexpos to make the lexer reusable
         https://github.com/dabeaz/ply/blob/master/doc/ply.md#internal-lexer-state
@@ -772,26 +887,11 @@ class TregexPattern:
             logging.debug("following rule: and_condition -> & and_condition")
             p[0] = p[2]
 
-        def p_and_not_and_condition(p):
-            """
-            and_condition : '&' not_and_condition
-            """
-            logging.debug("following rule: and_condition -> & not_and_condition")
-            p[0] = p[2]
-
         def p_and_condition(p):
             """
             and_conditions : and_condition
             """
             logging.debug("following rule: and_conditions -> and_condition")
-            and_conditions = [p[1]]
-            p[0] = and_conditions
-
-        def p_not_and_condition(p):
-            """
-            and_conditions : not_and_condition
-            """
-            logging.debug("following rule: and_conditions -> not_and_condition")
             and_conditions = [p[1]]
             p[0] = and_conditions
 
@@ -803,15 +903,6 @@ class TregexPattern:
             p[1].append(p[2])
             p[0] = p[1]
 
-        def p_and_conditions_not_and_condition(p):
-            """
-            and_conditions : and_conditions not_and_condition
-            """
-            logging.debug("following rule: and_conditions -> and_conditions not_and_condition")
-            p[1].append(p[2])
-
-            p[0] = p[1]
-
         def p_relation_data_equal_id(p):
             """
             and_conditions_backref : relation_data '=' ID
@@ -821,6 +912,11 @@ class TregexPattern:
             relation_data = p[1]
             name = p[3]
             those_nodes = self.get_nodes(name)
+            if those_nodes is None:
+                raise KeyError(
+                    f'Error!!  There is no matched node "{name}"!  Did you specify such a'
+                    " label in the pattern?"
+                )
 
             for that_node in those_nodes:
                 # backreferenced nodes should not be tracked by
@@ -910,6 +1006,40 @@ class TregexPattern:
 
             p[0] = not_and_condition
 
+        def p_not_and_condition(p):
+            """
+            and_condition : not_and_condition
+            """
+            logging.debug("following rule: and_condition -> not_and_condition")
+            p[0] = p[1]
+
+        def p_optional_and_conditions_multi_relation(p):
+            """
+            optional_and_condition : '?' and_conditions_multi_relation
+            """
+            logging.debug(
+                "following rule: optional_and_condition -> ? and_conditions_multi_relation"
+            )
+            and_conditions = p[2]
+
+            optional_and_condition = OptionalAndCondition(conditions=and_conditions)
+
+            p[0] = optional_and_condition
+
+        def p_optional_and_condition(p):
+            """
+            and_condition : optional_and_condition
+            """
+            logging.debug("following rule: and_condition -> optional_and_condition")
+            p[0] = p[1]
+
+        def p_lparen_and_condition_rparen(p):
+            """
+            and_condition : '(' and_condition ')'
+            """
+            logging.debug("following rule: and_condition : ( and_condition )")
+            p[0] = p[2]
+
         def p_lparen_and_conditions_rparen(p):
             """
             and_conditions : '(' and_conditions ')'
@@ -955,6 +1085,20 @@ class TregexPattern:
 
             p[0] = not_and_condition
 
+        def p_optional_lparen_and_conditions_rparen(p):
+            """
+            optional_and_condition : '?' '(' and_conditions ')'
+                                   | '?' '[' and_conditions ']'
+            """
+            logging.debug(
+                f"following rule: optional_and_condition -> ? {p[2]} and_conditions {p[4]}"
+            )
+            and_conditions = p[3]
+
+            optional_and_condition = OptionalAndCondition(conditions=and_conditions)
+
+            p[0] = optional_and_condition
+
         def p_not_lparen_or_conditions_rparen(p):
             """
             not_and_conditions : '!' '(' or_conditions ')'
@@ -969,6 +1113,25 @@ class TregexPattern:
                 not_and_conditions.append(not_and_condition)
 
             p[0] = not_and_conditions
+
+        def p_optional_lparen_or_conditions_rparen(p):
+            """
+            optional_or_conditions : '?' '(' or_conditions ')'
+                                   | '?' '[' or_conditions ']'
+            """
+            logging.debug(
+                f"following rule: optional_or_conditions -> ? {p[2]} or_conditions {p[4]}"
+            )
+            or_conditions = p[3]
+            optional_or_conditions = OptionalOrConditions(conditions=or_conditions)
+            p[0] = optional_or_conditions
+
+        def p_optional_or_conditions(p):
+            """
+            and_condition : optional_or_conditions
+            """
+            logging.debug("following rule: and_condition -> optional_or_conditions")
+            p[0] = p[1]
 
         def p_not_and_conditions(p):
             """
@@ -1058,7 +1221,7 @@ class TregexPattern:
             named_nodes_list = p[1]
             p[0] = list(node for named_nodes in named_nodes_list for node in named_nodes.nodes)
 
-        def p_error(p):
+        def p_error(p) -> Never:
             if p:
                 msg = (
                     f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token"

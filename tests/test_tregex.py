@@ -1287,95 +1287,72 @@ class TestTregex(BaseTmpl):
         # self.assertEqual("(VP (. .))", pattern.get_nodes("single")[0].tostring())
 
     # TODO
-    # /**
-    #  * Tests the subtree pattern, <code>&lt;...</code>, which checks for
-    #  * an exact subtree under our current tree, but test it as an optional relation.
-    #  *<br>
-    #  * Checks a bug reported by @tanloong (https://github.com/stanfordnlp/CoreNLP/issues/1375)
-    #  *<br>
-    #  * The optional subtree should only match exactly once,
-    #  * but its buggy form was an infinite loop
-    #  * (see CoordinationPattern for more notes on why)
-    #  */
-    # public void testOptionalSubtreePattern() {
-    #   runTest("A ?<... { B ; C ; D }", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))");
-    # }
-    #
-    # /**
-    #  * The bug reported by @tanloong (https://github.com/stanfordnlp/CoreNLP/issues/1375)
-    #  * actually applied to <i>all</i> optional coordination patterns
-    #  *<br>
-    #  * Here we check that a simpler optional conjunction also fails
-    #  */
-    # public void testOptionalChild() {
-    #   runTest("A ?(< B <C)", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))");
-    # }
-    #
-    # /**
-    #  * An optional coordination which doesn't hit should also match exactly once
-    #  */
-    # public void testOptionalChildMiss() {
-    #   runTest("A ?(< B < E)", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))");
-    # }
-    #
-    # /**
-    #  * An optional disjunction coordination should match at least once,
-    #  * but not match any extra times just because of the optional
-    #  */
-    # public void testOptionalDisjunction() {
-    #   // this matches once as an optional, even though none of the children match
-    #   runTest("A ?[< E | < F]", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))");
-    #
-    #   // this matches twice
-    #   runTest("A ?[< B | < C]", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))");
-    #   // this matches once, since the (< E) is useless
-    #   runTest("A ?[< B | < E]", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))");
-    #   // now it will match twice, since the B should match twice
-    #   runTest("A ?[< B | < E]", "(A (B 1) (C 2) (B 3))", "(A (B 1) (C 2) (B 3))", "(A (B 1) (C 2) (B 3))");
-    #
-    #   // check by hand that foo & bar are set as expected for the disjunction matches
-    #   // note that the order will be the order of the disjunction then subtrees,
-    #   // not sorted by the order of the subtrees
-    #   TregexPattern pattern = TregexPattern.compile("A ?[< B=foo | < C=bar]");
-    #   Tree tree = treeFromString("(A (B 1) (C 2) (B 3))");
-    #   TregexMatcher matches = pattern.matcher(tree);
-    #   assertTrue(matcher.find());
-    #   assertEqual("(B 1)", pattern.get_nodes("foo").tostring());
-    #   assertNull(pattern.get_nodes("bar"));
-    #
-    #   assertTrue(matcher.find());
-    #   assertEqual("(B 3)", pattern.get_nodes("foo").tostring());
-    #   assertNull(pattern.get_nodes("bar"));
-    #
-    #   assertTrue(matcher.find());
-    #   assertNull(pattern.get_nodes("foo"));
-    #   assertEqual("(C 2)", pattern.get_nodes("bar").tostring());
-    #
-    #   assertFalse(matcher.find());
-    #
-    #   // this example should also work if the same name is used
-    #   // for both of the children!
-    #   pattern = TregexPattern.compile("A ?[< B=foo | < C=foo]");
-    #   matches = pattern.matcher(tree);
-    #   assertTrue(matcher.find());
-    #   assertEqual("(B 1)", pattern.get_nodes("foo").tostring());
-    #
-    #   assertTrue(matcher.find());
-    #   assertEqual("(B 3)", pattern.get_nodes("foo").tostring());
-    #
-    #   assertTrue(matcher.find());
-    #   assertEqual("(C 2)", pattern.get_nodes("foo").tostring());
-    #
-    #   assertFalse(matcher.find());
-    #
-    # }
+
+    def test_optional_subtree_pattern(self):
+        # Tests the subtree pattern, <..., which checks for
+        # an exact subtree under our current tree, but test it as an optional relation.
+        #
+        # Checks a bug reported by @tanloong (https://github.com/stanfordnlp/CoreNLP/issues/1375)
+        self.run_test("A ?<... { C ; C ; D }", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))")
+
+    def test_optional_child(self):
+        # The bug reported by @tanloong (https://github.com/stanfordnlp/CoreNLP/issues/1375)
+        # actually applied to all optional coordination patterns
+        #
+        # Here we check that a simpler optional conjunction also fails
+        self.run_test("A ?(< B <C)", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))")
+
+    def test_optional_child_miss(self):
+        # An optional coordination which doesn't hit should also match exactly once
+        self.run_test("A ?(< B < E)", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))")
+
+    def test_optional_disjunction(self):
+        # An optional disjunction coordination should match at least once,
+        # but not match any extra times just because of the optional
+        # this matches once as an optional, even though none of the children match
+        self.run_test("A ?[< E || < F]", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))")
+
+        # this matches twice
+        self.run_test("A ?[< B || < C]", "(A (B 1) (C 2))", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
+        # this matches once, since the (< E) is useless
+        self.run_test("A ?[< B || < E]", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))")
+        # now it will match twice, since the B should match twice
+        self.run_test(
+            "A ?[< B || < E]",
+            "(A (B 1) (C 2) (B 3))",
+            "(A (B 1) (C 2) (B 3))",
+            "(A (B 1) (C 2) (B 3))",
+        )
+
+        # check by hand that foo & bar are set as expected for the disjunction matches
+        # note that the order will be the order of the disjunction then subtrees,
+        # not sorted by the order of the subtrees
+        pattern = TregexPattern("A ?[< B=foo || < C=bar]")
+        tree_string = "(A (B 1) (C 2) (B 3))"
+
+        matches = pattern.findall(tree_string)
+        self.assertEqual(3, len(matches))
+
+        self.assertEqual("(B 1)", pattern.get_nodes("foo")[0].tostring())
+        self.assertEqual("(B 3)", pattern.get_nodes("foo")[1].tostring())
+        self.assertEqual("(C 2)", pattern.get_nodes("bar")[0].tostring())
+
+        # this example should also work if the same name is used
+        # for both of the children!
+        pattern = TregexPattern("A ?[< B=foo || < C=foo]")
+        matches = pattern.findall(tree_string)
+        self.assertEqual(3, len(matches))
+
+        self.assertEqual("(B 1)", pattern.get_nodes("foo")[0].tostring())
+        self.assertEqual("(B 3)", pattern.get_nodes("foo")[1].tostring())
+        self.assertEqual("(C 2)", pattern.get_nodes("foo")[2].tostring())
 
     # TODO
     def test_negated_disjunction(self):
         """
         A user supplied an example of a negated disjunction which went into an infinite loop.
         Apparently no one had ever used a negated disjunction of tree structures before!
-        <br>
+
         The problem was that the logic at the time tried to backtrack in
         the disjunction to find a better match, but that resulted in it
         going back and forth between the failed clause which was accepted

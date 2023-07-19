@@ -3,7 +3,7 @@
 # [Stanford](https://github.com/stanfordnlp/CoreNLP/blob/139893242878ecacde79b2ba1d0102b855526610/src/edu/stanford/nlp/trees/Tree.java)
 
 import re
-from typing import Any, Generator, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Generator, List, Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from head_finder import HeadFinder
@@ -322,7 +322,8 @@ class Tree:
 
     @classmethod
     def fromstring(cls, string: str, brackets: str = "()") -> List["Tree"]:
-        # this code block about `brackets` is borrowed from nltk.tree.fromstring
+        # this code block about `brackets` is borrowed from nltk
+        # (https://github.com/nltk/nltk/blob/develop/nltk/tree/tree.py#L641)
         if not isinstance(brackets, str) or len(brackets) != 2:
             raise TypeError("brackets must be a length-2 string")
         if re.search(r"\s", brackets):
