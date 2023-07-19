@@ -22,10 +22,10 @@ from tree import Tree
 
 
 class NamedNodes:
-    def __init__(self, name: Optional[str], nodes: List[Tree], describing_str: str = "") -> None:
+    def __init__(self, name: Optional[str], nodes: List[Tree], string_repr:str="") -> None:
         self.name = name
         self.nodes = nodes
-        self.describing_str = describing_str
+        self.string_repr = string_repr
 
     def set_name(self, new_name: Optional[str]) -> None:
         self.name = new_name
@@ -40,15 +40,19 @@ class NamedNodes:
 
 class AbstractRelationData(ABC):
     def __init__(
-        self, rel_key: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
+        self, string_repr: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
     ):
         self.op = op
         self.is_negated = is_negated
         self.is_optional = is_optional
 
-    @abstractmethod
-    def condition_func(self, this_node: Tree, that_node: Tree):
-        raise NotImplementedError()
+        self.string_repr = string_repr
+
+    def __repr__(self) -> str:
+        return self.string_repr
+
+    def set_string_repr(self, s: str) -> None:
+        self.string_repr = s
 
     def toggle_negated(self) -> None:
         self.is_negated = not self.is_negated
@@ -56,12 +60,16 @@ class AbstractRelationData(ABC):
     def toggle_optional(self) -> None:
         self.is_optional = not self.is_optional
 
+    @abstractmethod
+    def condition_func(self, this_node: Tree, that_node: Tree):
+        raise NotImplementedError()
+
 
 class RelationData(AbstractRelationData):
     def __init__(
-        self, rel_key: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
+        self, string_repr: str, op: Callable, *, is_negated: bool = False, is_optional: bool = False
     ) -> None:
-        super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
+        super().__init__(string_repr, op, is_negated=is_negated, is_optional=is_optional)
 
     def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
         return self.op(this_node, that_node)
@@ -70,14 +78,14 @@ class RelationData(AbstractRelationData):
 class RelationWithStrArgData(AbstractRelationData):
     def __init__(
         self,
-        rel_key: str,
+        string_repr: str,
         op: Callable,
         *,
         arg: List[Tree],
         is_negated: bool = False,
         is_optional: bool = False,
     ) -> None:
-        super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
+        super().__init__(string_repr, op, is_negated=is_negated, is_optional=is_optional)
         self.arg = arg
 
     def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
@@ -87,14 +95,14 @@ class RelationWithStrArgData(AbstractRelationData):
 class RelationWithNumArgData(AbstractRelationData):
     def __init__(
         self,
-        rel_key: str,
+        string_repr: str,
         op: Callable,
         *,
         arg: int,
         is_negated: bool = False,
         is_optional: bool = False,
     ) -> None:
-        super().__init__(rel_key, op, is_negated=is_negated, is_optional=is_optional)
+        super().__init__(string_repr, op, is_negated=is_negated, is_optional=is_optional)
         self.arg = arg
 
     def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
@@ -104,14 +112,14 @@ class RelationWithNumArgData(AbstractRelationData):
 class MultiRelationData(RelationWithNumArgData):
     def __init__(
         self,
-        rel_key: str,
+        string_repr: str,
         op: Callable,
         *,
         arg: int,
         is_negated: bool = False,
         is_optional: bool = False,
     ) -> None:
-        super().__init__(rel_key, op, arg=arg, is_negated=is_negated, is_optional=is_optional)
+        super().__init__(string_repr, op, arg=arg, is_negated=is_negated, is_optional=is_optional)
 
 
 AND_CONDITIONS = List[Union["AndCondition", "NotAndCondition", "OptionalAndCondition"]]
@@ -554,16 +562,16 @@ class NodeDescriptions:
         self.is_negated = is_negated
         self.use_basic_cat = use_basic_cat
 
+        self.string_repr = "".join(desc.value for desc in self.descriptions)
+
     def __iter__(self) -> Iterator[NodeDescription]:
         return iter(self.descriptions)
 
     def __repr__(self) -> str:
-        string = "".join(desc.value for desc in self.descriptions)
-        if self.use_basic_cat:
-            string = "@" + string
-        if self.is_negated:
-            string = "!" + string
-        return string
+        return self.string_repr
+
+    def set_string_repr(self, s:str):
+        self.string_repr = s
 
     def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
@@ -694,11 +702,14 @@ class TregexPattern:
 
         return parser.parse(lexer=self.lexer)
 
-    def get_nodes(self, name: str) -> Optional[List[Tree]]:
+    def get_nodes(self, name: str) -> List[Tree]:
         try:
             handled_nodes = self.backrefs_map[name]
         except KeyError:
-            return None
+            raise SystemExit(
+                f'Error!!  There is no matched node "{name}"!  Did you specify such a'
+                " label in the pattern?"
+            )
         else:
             return handled_nodes
 
@@ -723,6 +734,7 @@ class TregexPattern:
             ("nonassoc", "="),
         )
 
+        log_indent = 0
         # 1. node description
         def p_ID(p):
             """
@@ -751,6 +763,7 @@ class TregexPattern:
             """
             # logging.debug("following rule: node_descriptions -> ! node_descriptions")
             p[2].toggle_negated()
+            p[2].set_string_repr(f'!{p[2].string_repr}')
 
             p[0] = p[2]
 
@@ -760,6 +773,7 @@ class TregexPattern:
             """
             # logging.debug("following rule: node_descriptions -> @ node_descriptions")
             p[2].toggle_use_basic_cat()
+            p[2].set_string_repr(f'@{p[2].string_repr}')
 
             p[0] = p[2]
 
@@ -784,30 +798,30 @@ class TregexPattern:
             named_nodes : node_descriptions
             """
             nodes = list(TregexMatcher.match_node_descriptions(p[1], trees))
-            describing_str = str(p[1])
-            logging.debug(f"following rule: named_nodes -> {describing_str}")
+            string_repr = p[1].string_repr
+            logging.debug(f"following rule: named_nodes -> {string_repr}")
 
-            p[0] = NamedNodes(None, nodes, describing_str)
+            p[0] = NamedNodes(None, nodes, string_repr)
 
         def p_lparen_node_description_rparen(p):
             """
             node_description : '(' node_description ')'
             """
-            logging.debug("following rule: node_description -> ( node_description )")
+            # logging.debug("following rule: node_description -> ( node_description )")
             p[0] = p[2]
 
         def p_lparen_node_descriptions_rparen(p):
             """
             node_descriptions : '(' node_descriptions ')'
             """
-            logging.debug("following rule: node_descriptions -> ( node_descriptions )")
+            # logging.debug("following rule: node_descriptions -> ( node_descriptions )")
             p[0] = p[2]
 
         def p_lparen_named_nodes_rparen(p):
             """
             named_nodes : '(' named_nodes ')'
             """
-            logging.debug("following rule: named_nodes -> ( named_nodes )")
+            # logging.debug("following rule: named_nodes -> ( named_nodes )")
             p[0] = p[2]
 
         def p_named_nodes_equal_id(p):
@@ -816,7 +830,7 @@ class TregexPattern:
             """
             name = p[3]
             named_nodes = p[1]
-            logging.debug(f"following rule: {named_nodes.describing_str} = {name}")
+            logging.debug(f"following rule: {named_nodes.string_repr} = {name}")
 
             named_nodes.set_name(name)
             self.backrefs_map[name] = named_nodes.nodes
@@ -829,19 +843,19 @@ class TregexPattern:
             """
             relation_data : RELATION
             """
-            logging.debug("following rule: relation_data -> RELATION")
-            rel_key = p[1]
-            p[0] = RelationData(rel_key, self.RELATION_MAP[rel_key])
+            # logging.debug("following rule: relation_data -> RELATION")
+            string_repr = p[1]
+            p[0] = RelationData(string_repr, self.RELATION_MAP[string_repr])
 
         # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_named_nodes_rparen(p):
             """
             relation_data : REL_W_STR_ARG '(' named_nodes ')'
             """
-            logging.debug("following rule: relation_data -> REL_W_STR_ARG ( named_nodes )")
-            rel_key = p[1]
+            # logging.debug("following rule: relation_data -> REL_W_STR_ARG ( named_nodes )")
+            string_repr = p[1]
             p[0] = RelationWithStrArgData(
-                rel_key, self.REL_W_STR_ARG_MAP[rel_key], arg=p[3].nodes
+                string_repr, self.REL_W_STR_ARG_MAP[string_repr], arg=p[3].nodes
             )
 
         # 2.3 REL_W_NUM_ARG
@@ -849,26 +863,32 @@ class TregexPattern:
             """
             relation_data : RELATION NUMBER
             """
-            logging.debug("following rule: relation_data -> RELATION NUMBER")
+            # logging.debug("following rule: relation_data -> RELATION NUMBER")
             rel_key, num = p[1:]
+            string_repr = f"{rel_key}{num}"
+
             if rel_key.endswith("-"):
                 num = f"-{num}"
-            p[0] = RelationWithNumArgData(rel_key, self.REL_W_NUM_ARG_MAP[rel_key], arg=int(num))
+            p[0] = RelationWithNumArgData(string_repr, self.REL_W_NUM_ARG_MAP[rel_key], arg=int(num))
 
         def p_not_relation_data(p):
             """
             relation_data : '!' relation_data
             """
-            logging.debug("following rule: relation_data -> ! relation_data")
+            # logging.debug("following rule: relation_data -> ! relation_data")
             p[2].toggle_negated()
+            p[2].set_string_repr(f"!{p[2].string_repr}")
+
             p[0] = p[2]
 
         def p_optional_relation_data(p):
             """
             relation_data : "?" relation_data
             """
-            logging.debug("following rule: relation_data -> ? relation_data")
+            # logging.debug("following rule: relation_data -> ? relation_data")
             p[2].toggle_optional()
+            p[2].set_string_repr(f"?{p[2].string_repr}")
+
             p[0] = p[2]
 
         # 3. and_conditions
@@ -877,86 +897,88 @@ class TregexPattern:
             and_condition : relation_data named_nodes %prec IMAGINE_REDUCE
             """
             # %prec IMAGINE_REDUCE: https://github.com/dabeaz/ply/issues/215
-            logging.debug("following rule: and_condition -> relation_data named_nodes")
+            logging.debug(f"following rule: and_condition -> {p[1].string_repr} {p[2].string_repr}")
             p[0] = AndCondition(relation_data=p[1], named_nodes=p[2])
 
         def p_and_and_condition(p):
             """
             and_condition : '&' and_condition
             """
-            logging.debug("following rule: and_condition -> & and_condition")
+            # logging.debug("following rule: and_condition -> & and_condition")
             p[0] = p[2]
-
-        def p_and_condition(p):
-            """
-            and_conditions : and_condition
-            """
-            logging.debug("following rule: and_conditions -> and_condition")
-            and_conditions = [p[1]]
-            p[0] = and_conditions
 
         def p_and_conditions_and_condition(p):
             """
             and_conditions : and_conditions and_condition
             """
-            logging.debug("following rule: and_conditions -> and_conditions and_condition")
+            # logging.debug("following rule: and_conditions -> and_conditions and_condition")
+
             p[1].append(p[2])
             p[0] = p[1]
 
-        def p_relation_data_equal_id(p):
+        def p_and_condition(p):
             """
-            and_conditions_backref : relation_data '=' ID
+            and_conditions : and_condition
             """
-            logging.debug("and_conditions_backref -> relation_data EUQAL ID")
-            and_conditions_backref = []
-            relation_data = p[1]
-            name = p[3]
-            those_nodes = self.get_nodes(name)
-            if those_nodes is None:
-                raise KeyError(
-                    f'Error!!  There is no matched node "{name}"!  Did you specify such a'
-                    " label in the pattern?"
-                )
+            and_conditions = [p[1]]
+            p[0] = and_conditions
+        def p_equal_id(p):
+            """
+            named_nodes : '=' ID
+            """
+            name = p[2]
+            logging.debug(f"following rule: named_nodes -> = {name}")
 
-            for that_node in those_nodes:
-                # backreferenced nodes should not be tracked by
-                # self.backrefs_map, as they themselves are already the
-                # tracking results, thus set "name" as None
-                named_nodes = NamedNodes(name=None, nodes=[that_node])
-                and_conditions_backref.append(
-                    AndCondition(relation_data=relation_data, named_nodes=named_nodes)
-                )
+            nodes = self.get_nodes(name)
+            named_nodes = NamedNodes(None, nodes, string_repr=f"={name}")
+            p[0] = named_nodes
 
-            p[0] = and_conditions_backref
-
-        def p_and_conditions_and_conditions_backref(p):
-            """
-            and_conditions : and_conditions and_conditions_backref
-            """
-            logging.debug(
-                "following rule: and_conditions -> and_conditions and_conditions_backref"
-            )
-            p[1].extend(p[2])
-            p[0] = p[1]
-
-        def p_and_conditions_backref(p):
-            """
-            and_conditions : and_conditions_backref
-            """
-            logging.debug("following rule: and_conditions -> and_conditions_backref")
-            p[0] = p[1]
+        # def p_relation_data_equal_id(p):
+        #     """
+        #     and_conditions_backref : relation_data '=' ID
+        #     """
+        #     and_conditions_backref = []
+        #     relation_data = p[1]
+        #     name = p[3]
+        #     those_nodes = self.get_nodes(name)
+        #     logging.debug(f"and_conditions_backref -> {relation_data.string_repr} = {name}")
+        #
+        #     for that_node in those_nodes:
+        #         # backreferenced nodes should not be tracked by
+        #         # self.backrefs_map, as they themselves are already the
+        #         # tracking results, thus set "name" as None
+        #         named_nodes = NamedNodes(name=None, nodes=[that_node], string_repr=None)
+        #         and_conditions_backref.append(
+        #             AndCondition(relation_data=relation_data, named_nodes=named_nodes)
+        #         )
+        #
+        #     p[0] = and_conditions_backref
+        #
+        # def p_and_conditions_and_conditions_backref(p):
+        #     """
+        #     and_conditions : and_conditions and_conditions_backref
+        #     """
+        #     # logging.debug(
+        #     #     "following rule: and_conditions -> and_conditions and_conditions_backref"
+        #     # )
+        #     p[1].extend(p[2])
+        #     p[0] = p[1]
+        #
+        # def p_and_conditions_backref(p):
+        #     """
+        #     and_conditions : and_conditions_backref
+        #     """
+        #     # logging.debug("following rule: and_conditions -> and_conditions_backref")
+        #     p[0] = p[1]
 
         def p_multi_relation_named_nodes(p):
             """
             and_conditions_multi_relation : MULTI_RELATION "{" named_nodes_list "}"
             """
-            logging.debug(
-                "following rule: and_conditions_multi_relation -> MULTI_RELATION {"
-                " named_nodes_list }"
-            )
             rel_key = p[1]
             op = self.MULTI_RELATION_MAP[rel_key]
             named_nodes_list = p[3]
+            logging.debug(f"following rule: and_conditions_multi_relation -> {rel_key} {{ named_nodes_list }}")
 
             conditions = []
 
@@ -1052,7 +1074,7 @@ class TregexPattern:
             or_conditions : and_conditions OR_REL and_conditions
             """
             logging.debug(
-                "following rule: or_conditions -> and_conditions OR_REL and_conditions"
+                f"following rule: or_conditions -> and_conditions {p[2]} and_conditions"
             )
 
             p[0] = [p[1], p[3]]
@@ -1061,7 +1083,7 @@ class TregexPattern:
             """
             or_conditions : or_conditions OR_REL and_conditions
             """
-            logging.debug("following rule: or_conditions -> or_conditions OR_REL and_conditions")
+            logging.debug(f"following rule: or_conditions -> or_conditions {p[2]} and_conditions")
             p[1].append(p[2])
 
             p[0] = p[1]
@@ -1162,6 +1184,8 @@ class TregexPattern:
             logging.debug("following rule: named_nodes -> named_nodes and_conditions")
             named_nodes = p[1]
             or_conditions = p[2]
+            print('-'*80)
+            print(named_nodes.nodes)
 
             res, backrefs_map = TregexMatcher.match_and_conditions(named_nodes, or_conditions)
             for name, node_list in backrefs_map.items():
@@ -1173,6 +1197,8 @@ class TregexPattern:
                 self.backrefs_map[name] = node_list
 
             named_nodes.set_nodes(res)
+            print(named_nodes.nodes)
+            print('-'*80)
             p[0] = named_nodes
 
         def p_named_nodes_or_conditions(p):
