@@ -10,6 +10,7 @@ clean:
 	rm -rf src/*.egg-info
 	rm -rf htmlcov
 	rm -rf coverage.xml
+	rm -rf parser.out
 	rm -rf src/parser.out
 	pip uninstall -y pytregex || true
 

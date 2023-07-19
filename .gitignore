@@ -27,3 +27,5 @@ test.py
 notes.md
 tmp
 TregexTest.java
+src/pytregex/buggy.log_
+TregexTest.java.bak
