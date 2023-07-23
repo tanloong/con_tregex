@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding=utf-8 -*-
 
-from typing import List, Optional, TYPE_CHECKING
+from abc import ABC, abstractmethod
+from typing import List, Optional, TYPE_CHECKING, Callable
 
 from collins_head_finder import CollinsHeadFinder
 
@@ -12,8 +13,11 @@ if TYPE_CHECKING:
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java
 # last modified at Apr 3, 2022 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/tregex/Relation.java)
 
+# ------------------------------------------------------------------------------
+# RelationOp
 
-class Relation:
+
+class RelationOp:
     hf = CollinsHeadFinder()
 
     @classmethod
@@ -164,7 +168,7 @@ class Relation:
             return t2.first_child is t1
         else:
             if hf is None:
-                hf = Relation.hf
+                hf = RelationOp.hf
             head = hf.determineHead(t2)
             if head is None:
                 return False
@@ -182,7 +186,7 @@ class Relation:
         cls, t1: "Tree", t2: "Tree", hf: Optional["HeadFinder"] = None
     ) -> bool:
         if hf is None:
-            hf = Relation.hf
+            hf = RelationOp.hf
         return hf.determineHead(t2) is t1
 
     @classmethod
@@ -209,7 +213,7 @@ class Relation:
 
     @classmethod
     def ancestor_of_leaf(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t1 is not t2 and t2.is_leaf and Relation.dominates(t1, t2)
+        return t1 is not t2 and t2.is_leaf and RelationOp.dominates(t1, t2)
 
     @classmethod
     def unbroken_category_dominates(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
@@ -217,7 +221,7 @@ class Relation:
             if kid is t2:
                 return True
             else:
-                if kid in rel_arg and Relation.unbroken_category_dominates(kid, t2, rel_arg):
+                if kid in rel_arg and RelationOp.unbroken_category_dominates(kid, t2, rel_arg):
                     return True
         return False
 
@@ -225,7 +229,7 @@ class Relation:
     def unbroken_category_is_dominated_by(
         cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]
     ) -> bool:
-        return Relation.unbroken_category_dominates(t2, t1, rel_arg)
+        return RelationOp.unbroken_category_dominates(t2, t1, rel_arg)
 
     @classmethod
     def unbroken_category_precedes(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
@@ -250,7 +254,7 @@ class Relation:
         if following_node is t2:
             return True
         else:
-            if following_node in rel_arg and Relation.unbroken_category_precedes(
+            if following_node in rel_arg and RelationOp.unbroken_category_precedes(
                 following_node, t2, rel_arg
             ):
                 return True
@@ -258,7 +262,7 @@ class Relation:
 
     @classmethod
     def unbroken_category_follows(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
-        return Relation.unbroken_category_precedes(t2, t1, rel_arg)
+        return RelationOp.unbroken_category_precedes(t2, t1, rel_arg)
 
     @classmethod
     def pattern_splitter(cls, t1: "Tree", t2: "Tree") -> bool:
@@ -302,3 +306,72 @@ class Relation:
             # eg, leafNum == -1 means we check leaves.size() - 1
             index = len(leaves) + leaf_num
         return leaves[index] is t2
+
+
+# ------------------------------------------------------------------------------
+# RelationData
+
+
+class AbstractRelationData(ABC):
+    def __init__(self, string_repr: str, op: Callable):
+        self.op = op
+        self.string_repr = string_repr
+
+    def __repr__(self) -> str:
+        return self.string_repr
+
+    def set_string_repr(self, s: str) -> None:
+        self.string_repr = s
+
+    @abstractmethod
+    def condition_func(self, this_node: "Tree", that_node: "Tree"):
+        raise NotImplementedError()
+
+
+class RelationData(AbstractRelationData):
+    def __init__(self, string_repr: str, op: Callable) -> None:
+        super().__init__(string_repr, op)
+
+    def condition_func(self, this_node: "Tree", that_node: "Tree") -> bool:
+        return self.op(this_node, that_node)
+
+
+class RelationWithStrArgData(AbstractRelationData):
+    def __init__(
+        self,
+        string_repr: str,
+        op: Callable,
+        *,
+        arg: List["Tree"],
+    ) -> None:
+        super().__init__(string_repr, op)
+        self.arg = arg
+
+    def condition_func(self, this_node: "Tree", that_node: "Tree") -> bool:
+        return self.op(this_node, that_node, self.arg)
+
+
+class RelationWithNumArgData(AbstractRelationData):
+    def __init__(
+        self,
+        string_repr: str,
+        op: Callable,
+        *,
+        arg: int,
+    ) -> None:
+        super().__init__(string_repr, op)
+        self.arg = arg
+
+    def condition_func(self, this_node: "Tree", that_node: "Tree") -> bool:
+        return self.op(this_node, that_node, self.arg)
+
+
+class MultiRelationData(RelationWithNumArgData):
+    def __init__(
+        self,
+        string_repr: str,
+        op: Callable,
+        *,
+        arg: int,
+    ) -> None:
+        super().__init__(string_repr, op, arg=arg)

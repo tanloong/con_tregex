@@ -1,22 +1,18 @@
-from abc import ABC, abstractmethod
 from collections import namedtuple
 import logging
 import re
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    Iterator,
-    List,
-    Never,
-    Optional,
-)
+from typing import Any, Dict, Generator, Iterator, List, Never, Optional
 
 from ply import lex, yacc
 
 from condition import And, ConditionOp, Not, Opt, Or
-from relation import Relation
+from relation import (
+    MultiRelationData,
+    RelationData,
+    RelationOp,
+    RelationWithNumArgData,
+    RelationWithStrArgData,
+)
 from tree import Tree
 
 
@@ -33,71 +29,6 @@ class NamedNodes:
 
     def set_nodes(self, new_nodes: List[Tree]) -> None:
         self.nodes = new_nodes
-
-
-class AbstractRelationData(ABC):
-    def __init__(self, string_repr: str, op: Callable):
-        self.op = op
-        self.string_repr = string_repr
-
-    def __repr__(self) -> str:
-        return self.string_repr
-
-    def set_string_repr(self, s: str) -> None:
-        self.string_repr = s
-
-    @abstractmethod
-    def condition_func(self, this_node: Tree, that_node: Tree):
-        raise NotImplementedError()
-
-
-class RelationData(AbstractRelationData):
-    def __init__(self, string_repr: str, op: Callable) -> None:
-        super().__init__(string_repr, op)
-
-    def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
-        return self.op(this_node, that_node)
-
-
-class RelationWithStrArgData(AbstractRelationData):
-    def __init__(
-        self,
-        string_repr: str,
-        op: Callable,
-        *,
-        arg: List[Tree],
-    ) -> None:
-        super().__init__(string_repr, op)
-        self.arg = arg
-
-    def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
-        return self.op(this_node, that_node, self.arg)
-
-
-class RelationWithNumArgData(AbstractRelationData):
-    def __init__(
-        self,
-        string_repr: str,
-        op: Callable,
-        *,
-        arg: int,
-    ) -> None:
-        super().__init__(string_repr, op)
-        self.arg = arg
-
-    def condition_func(self, this_node: Tree, that_node: Tree) -> bool:
-        return self.op(this_node, that_node, self.arg)
-
-
-class MultiRelationData(RelationWithNumArgData):
-    def __init__(
-        self,
-        string_repr: str,
-        op: Callable,
-        *,
-        arg: int,
-    ) -> None:
-        super().__init__(string_repr, op, arg=arg)
 
 
 class TregexMatcher:
@@ -214,68 +145,68 @@ class NodeDescriptions:
 
 class TregexPattern:
     RELATION_MAP = {
-        "<": Relation.parent_of,
-        ">": Relation.child_of,
-        "<<": Relation.dominates,
-        ">>": Relation.dominated_by,
-        ">:": Relation.only_child_of,
-        "<:": Relation.has_only_child,
-        ">`": Relation.last_child_of_parent,
-        ">-": Relation.last_child_of_parent,
-        "<`": Relation.parent_of_last_child,
-        "<-": Relation.parent_of_last_child,
-        ">,": Relation.leftmost_child_of,
-        "<,": Relation.has_leftmost_child,
-        "<<`": Relation.has_rightmost_descendant,
-        "<<-": Relation.has_rightmost_descendant,
-        ">>`": Relation.rightmost_descendant_of,
-        ">>-": Relation.rightmost_descendant_of,
-        ">>,": Relation.leftmost_descendant_of,
-        "<<,": Relation.has_leftmost_descendant,
-        "$..": Relation.left_sister_of,
-        "$++": Relation.left_sister_of,
-        "$--": Relation.right_sister_of,
-        "$,,": Relation.right_sister_of,
-        "$.": Relation.immediate_left_sister_of,
-        "$+": Relation.immediate_left_sister_of,
-        "$-": Relation.immediate_right_sister_of,
-        "$,": Relation.immediate_right_sister_of,
-        "$": Relation.sister_of,
-        "==": Relation.equals,
-        "<=": Relation.parent_equals,
-        "<<:": Relation.unary_path_ancestor_of,
-        ">>:": Relation.unary_path_descedant_of,
-        ":": Relation.pattern_splitter,
-        ">#": Relation.immediately_heads,
-        "<#": Relation.immediately_headed_by,
-        ">>#": Relation.heads,
-        "<<#": Relation.headed_by,
-        "..": Relation.precedes,
-        ",,": Relation.follows,
-        ".": Relation.immediately_precedes,
-        ",": Relation.immediately_follows,
-        "<<<": Relation.ancestor_of_leaf,
-        "<<<-": Relation.ancestor_of_leaf,
+        "<": RelationOp.parent_of,
+        ">": RelationOp.child_of,
+        "<<": RelationOp.dominates,
+        ">>": RelationOp.dominated_by,
+        ">:": RelationOp.only_child_of,
+        "<:": RelationOp.has_only_child,
+        ">`": RelationOp.last_child_of_parent,
+        ">-": RelationOp.last_child_of_parent,
+        "<`": RelationOp.parent_of_last_child,
+        "<-": RelationOp.parent_of_last_child,
+        ">,": RelationOp.leftmost_child_of,
+        "<,": RelationOp.has_leftmost_child,
+        "<<`": RelationOp.has_rightmost_descendant,
+        "<<-": RelationOp.has_rightmost_descendant,
+        ">>`": RelationOp.rightmost_descendant_of,
+        ">>-": RelationOp.rightmost_descendant_of,
+        ">>,": RelationOp.leftmost_descendant_of,
+        "<<,": RelationOp.has_leftmost_descendant,
+        "$..": RelationOp.left_sister_of,
+        "$++": RelationOp.left_sister_of,
+        "$--": RelationOp.right_sister_of,
+        "$,,": RelationOp.right_sister_of,
+        "$.": RelationOp.immediate_left_sister_of,
+        "$+": RelationOp.immediate_left_sister_of,
+        "$-": RelationOp.immediate_right_sister_of,
+        "$,": RelationOp.immediate_right_sister_of,
+        "$": RelationOp.sister_of,
+        "==": RelationOp.equals,
+        "<=": RelationOp.parent_equals,
+        "<<:": RelationOp.unary_path_ancestor_of,
+        ">>:": RelationOp.unary_path_descedant_of,
+        ":": RelationOp.pattern_splitter,
+        ">#": RelationOp.immediately_heads,
+        "<#": RelationOp.immediately_headed_by,
+        ">>#": RelationOp.heads,
+        "<<#": RelationOp.headed_by,
+        "..": RelationOp.precedes,
+        ",,": RelationOp.follows,
+        ".": RelationOp.immediately_precedes,
+        ",": RelationOp.immediately_follows,
+        "<<<": RelationOp.ancestor_of_leaf,
+        "<<<-": RelationOp.ancestor_of_leaf,
     }
 
     REL_W_STR_ARG_MAP = {
-        "<+": Relation.unbroken_category_dominates,
-        ">+": Relation.unbroken_category_is_dominated_by,
-        ".+": Relation.unbroken_category_precedes,
-        ",+": Relation.unbroken_category_follows,
+        "<+": RelationOp.unbroken_category_dominates,
+        ">+": RelationOp.unbroken_category_is_dominated_by,
+        ".+": RelationOp.unbroken_category_precedes,
+        ",+": RelationOp.unbroken_category_follows,
     }
 
     REL_W_NUM_ARG_MAP = {
-        ">": Relation.ith_child_of,
-        ">-": Relation.ith_child_of,
-        "<": Relation.has_ith_child,
-        "<-": Relation.has_ith_child,
-        "<<<": Relation.ancestor_of_ith_leaf,
-        "<<<-": Relation.ancestor_of_ith_leaf,
+        ">": RelationOp.ith_child_of,
+        ">-": RelationOp.ith_child_of,
+        "<": RelationOp.has_ith_child,
+        "<-": RelationOp.has_ith_child,
+        "<<<": RelationOp.ancestor_of_ith_leaf,
+        "<<<-": RelationOp.ancestor_of_ith_leaf,
     }
 
     MULTI_RELATION_MAP = {
-        "<...": Relation.has_ith_child,
+        "<...": RelationOp.has_ith_child,
     }
 
     tokens = [

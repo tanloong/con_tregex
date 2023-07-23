@@ -6,7 +6,7 @@ from typing import Any, Dict, Generator, List, Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from tree import Tree
-    from tregex import AbstractRelationData
+    from relation import AbstractRelationData
 
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java
 # last modified at Apr 3, 2022 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/tregex/Relation.java)

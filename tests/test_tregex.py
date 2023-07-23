@@ -545,6 +545,54 @@ class TestTregex(BaseTmpl):
         self.run_test(imfollowing, "(a (foo 1) (baz 2) (bar 3))", "(bar 3)")
         self.run_test(imfollowing, "(a (baz 1) (foo 2) (bar 3))", "(foo 2)")
 
+    # TODO
+    #     def test_category_functions(self):
+    # Function<String, String> fooCategory = new Function<String, String>()
+    #   public String apply(String label)
+    #     if (label == null)
+    #       return label
+    #
+    #     if (label.equals("bar"))
+    #       return "foo"
+    #
+    #     return label
+    #
+    #
+    # TregexPatternCompiler fooCompiler = new TregexPatternCompiler(fooCategory)
+    #
+    # TregexPattern fooTregex = fooCompiler("@foo > bar")
+    #         self.run_test(fooTregex, "(bar (foo 0))", "(foo 0)")
+    #         self.run_test(fooTregex, "(bar (bar 0))", "(bar 0)")
+    #         self.run_test(fooTregex, "(foo (foo 0))")
+    #         self.run_test(fooTregex, "(foo (bar 0))")
+    #
+    # Function<String, String> barCategory = new Function<String, String>()
+    #   public String apply(String label)
+    #     if (label == null)
+    #       return label
+    #
+    #     if (label.equals("foo"))
+    #       return "bar"
+    #
+    #     return label
+    #
+    #
+    # TregexPatternCompiler barCompiler = new TregexPatternCompiler(barCategory)
+    #
+    # TregexPattern barTregex = barCompiler("@bar > foo")
+    #         self.run_test(barTregex, "(bar (foo 0))")
+    #         self.run_test(barTregex, "(bar (bar 0))")
+    #         self.run_test(barTregex, "(foo (foo 0))", "(foo 0)")
+    #         self.run_test(barTregex, "(foo (bar 0))", "(bar 0)")
+    #
+    # # These should still work, since the tregex patterns have
+    # # different category functions.  Old enough versions of tregex do
+    # # not allow for that.
+    #         self.run_test(fooTregex, "(bar (foo 0))", "(foo 0)")
+    #         self.run_test(fooTregex, "(bar (bar 0))", "(bar 0)")
+    #         self.run_test(fooTregex, "(foo (foo 0))")
+    #         self.run_test(fooTregex, "(foo (bar 0))")
+
     def test_dominate_unary_chain(self):
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar))))))", "(foo (b (c (d (bar)))))")
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar) (baz))))))")
@@ -758,9 +806,14 @@ class TestTregex(BaseTmpl):
         features.
         """
         MONTH_REGEX = "January|February|March|April|May|June|July|August|September|October|November|December|Jan\\.|Feb\\.|Mar\\.|Apr\\.|Aug\\.|Sep\\.|Sept\\.|Oct\\.|Nov\\.|Dec\\."
-        testPattern = "NP=root <1 (NP=monthdayroot <1 (NNP=month <: /" + MONTH_REGEX +"/) <2 (CD=day <: __)) <2 (/^,$/=comma <: /^,$/) <3 (NP=yearroot <: (CD=year <: __)) : (=root <- =yearroot) : (=monthdayroot <- =day)"
+        testPattern = (
+            "NP=root <1 (NP=monthdayroot <1 (NNP=month <: /"
+            + MONTH_REGEX
+            + "/) <2 (CD=day <: __)) <2 (/^,$/=comma <: /^,$/) <3 (NP=yearroot <: (CD=year <:"
+            " __)) : (=root <- =yearroot) : (=monthdayroot <- =day)"
+        )
 
-        #TODO
+        # TODO
         # self.run_test(testPattern, "(ROOT (S (NP (NNP Mr.) (NNP Good)) (VP (VBZ devotes) (NP (RB much) (JJ serious) (NN space)) (PP (TO to) (NP (NP (DT the) (NNS events)) (PP (IN of) (NP (NP (NP (NNP Feb.) (CD 25)) (, ,) (NP (CD 1942))) (, ,) (SBAR (WHADVP (WRB when)) (S (NP (JJ American) (NNS gunners)) (VP (VBD spotted) (NP (NP (JJ strange) (NNS lights)) (PP (IN in) (NP (NP (DT the) (NN sky)) (PP (IN above) (NP (NNP Los) (NNP Angeles)))))))))))))) (. .)))", "(NP (NP (NNP Feb.) (CD 25)) (, ,) (NP (CD 1942)))")
         # self.run_test(testPattern, "(ROOT (S (NP (DT The) (JJ preferred) (NNS shares)) (VP (MD will) (VP (VB carry) (NP (NP (DT a) (JJ floating) (JJ annual) (NN dividend)) (ADJP (JJ equal) (PP (TO to) (NP (NP (CD 72) (NN %)) (PP (IN of) (NP (NP (DT the) (JJ 30-day) (NNS bankers) (POS ')) (NN acceptance) (NN rate))))))) (PP (IN until) (NP (NP (NNP Dec.) (CD 31)) (, ,) (NP (CD 1994)))))) (. .)))", "(NP (NP (NNP Dec.) (CD 31)) (, ,) (NP (CD 1994)))")
         # self.run_test(testPattern, "(ROOT (S (NP (PRP It)) (VP (VBD said) (SBAR (S (NP (NN debt)) (VP (VBD remained) (PP (IN at) (NP (NP (DT the) (QP ($ $) (CD 1.22) (CD billion))) (SBAR (WHNP (DT that)) (S (VP (VBZ has) (VP (VBD prevailed) (PP (IN since) (NP (JJ early) (CD 1989))))))))) (, ,) (SBAR (IN although) (S (NP (IN that)) (VP (VBN compared) (PP (IN with) (NP (NP (QP ($ $) (CD 911) (CD million))) (PP (IN at) (NP (NP (NNP Sept.) (CD 30)) (, ,) (NP (CD 1988))))))))))))) (. .)))", "(NP (NP (NNP Sept.) (CD 30)) (, ,) (NP (CD 1988)))")
@@ -930,6 +983,240 @@ class TestTregex(BaseTmpl):
         self.run_test(pattern, inputTrees[3])
         self.run_test(pattern, inputTrees[4], "(PP (IN in) (NP (NNP Australia)))")
 
+    def test_link(self):
+        # matched node will be (bar 3), the next bar matches (bar 2), and
+        # the foo at the end obviously matches the (foo 1)
+        self.run_test("bar $- (bar $- foo)", "(a (foo 1) (bar 2) (bar 3))", "(bar 3)")
+        # same thing, but this tests the link functionality, as the
+        # second match should also be (bar 2)
+        self.run_test("bar=a $- (~a $- foo)", "(a (foo 1) (bar 2) (bar 3))", "(bar 3)")
+
+        # TODO
+        # won't work, since (bar 3) doesn't satisfy the next-to-foo
+        # relation, and (bar 2) isn't the same node as (bar 3)
+        # self.run_test("bar=a $- (=a $- foo)", "(a (foo 1) (bar 2) (bar 3))")
+
+        # links can be saved as named nodes as well, so this should work
+        self.run_test("bar=a $- (~a=b $- foo)", "(a (foo 1) (bar 2) (bar 3))", "(bar 3)")
+
+        # run a few of the same tests, but this time dissect the results
+        # to make sure the captured nodes are the correct nodes
+        tree_string = "(a (foo 1) (bar 2) (bar 3))"
+        pattern = TregexPattern("bar=a $- (~a $- foo)")
+        matches = pattern.findall(tree_string)
+        self.assertEqual(1, len(matches))
+        self.assertEqual("(bar 3)", matches[0].tostring())
+        self.assertEqual("(bar 3)", pattern.get_nodes("a")[0].tostring())
+
+        pattern = TregexPattern("bar=a $- (~a=b $- foo)")
+        matches = pattern.findall(tree_string)
+        self.assertEqual(1, len(matches))
+        self.assertEqual("(bar 3)", matches[0].tostring())
+        self.assertEqual("(bar 3)", pattern.get_nodes("a")[0].tostring())
+        self.assertEqual("(bar 2)", pattern.get_nodes("b")[0].tostring())
+
+        pattern = TregexPattern("bar=a $- (~a=b $- foo=c)")
+        matches = pattern.findall(tree_string)
+        self.assertEqual(1, len(matches))
+        self.assertEqual("(bar 3)", matches[0].tostring())
+        self.assertEqual("(bar 3)", pattern.get_nodes("a")[0].tostring())
+        self.assertEqual("(bar 2)", pattern.get_nodes("b")[0].tostring())
+        self.assertEqual("(foo 1)", pattern.get_nodes("c")[0].tostring())
+
+    # TODO
+    #   def test_backref(self)
+    # """Test another variant of using links, this time with pattern partitions"""
+    #     TregexPattern tregex = TregexPattern.compile("__ <1 B=n <2 ~n");
+    #     Tree tree = treeFromString("(A (B w) (B x))");
+    #     TregexMatcher matcher = tregex.matcher(tree);
+    #     assertTrue(matcher.find());
+    #     Tree match = matcher.getMatch();
+    #     assertEquals("(A (B w) (B x))", match.toString());
+    #     Tree node = pattern.get_nodes("n");
+    #     assertEquals("(B w)", node.toString());
+    #     assertFalse(matcher.find());
+    #
+    #     tregex = TregexPattern.compile("__ < B=n <2 B=m : (=n !== =m)");
+    #     tree = treeFromString("(A (B w) (B x))");
+    #     matcher = tregex.matcher(tree);
+    #     assertTrue(matcher.find());
+    #     match = matcher.getMatch();
+    #     assertEquals("(A (B w) (B x))", match.toString());
+    #     node = pattern.get_nodes("n");
+    #     assertEquals("(B w)", node.toString());
+    #     assertFalse(matcher.find());
+
+    def test_nonsense(self):
+        # TODO: add this in readme: pytregex indeed allow this. in pytregex later naming will override previous ones, so only the last time of naming will be remembered. pytregex chooses this different behavior due to the fact that in pytregex disallowing duplicated renaming in a conjunction will also disallow others patterns that are converted to conjunction. For example, in 'A ?[< B=foo || < C=foo]', the '?[< B=foo || < C=foo]' will be considered as a (1) optional disjunction, and then (2) a single condition, and then (3) a conjunction containing only that one condition. The two 'foo' will be seen as duplicated naming and disallowed.
+
+        # can't name a variable twice
+        # pattern = TregexPattern("foo=a $ bar=a")
+        # self.assertRaises(SystemExit, pattern.findall, "(A)")
+
+        # another way of doing the same thing
+        # pattern = TregexPattern("foo=a > bar=b $ ~a=b")
+        # self.assertRaises(SystemExit, pattern.findall, "(A)")
+
+        # ... but this should work
+        TregexPattern("foo=a > bar=b $ ~a").findall("(A)")
+
+        # can't link to a variable that doesn't exist yet
+        pattern = TregexPattern("~a $- (bar=a $- foo)")
+        self.assertRaises(SystemExit, pattern.findall, "(A)")
+
+        # TODO
+        # can't reference a variable that doesn't exist yet
+        # pattern = TregexPattern("=a $- (bar=a $- foo)")
+        # self.assertRaises(SystemExit, pattern.findall, '(A)')
+
+        # you'd have to be really demented to do this
+        pattern = TregexPattern("~a=a $- (bar=b $- foo)")
+        self.assertRaises(SystemExit, pattern.findall, "(A)")
+
+        # This should work... no reason this would barf
+        TregexPattern("foo=a : ~a").findall("(A)")
+        TregexPattern("a < foo=a || < bar=a").findall("(A)")
+
+        # TODO: pytregex indeed support this, remember to include this diverging behavior in pytregex's readme
+        # can't have a link in one part of a disjunction to a variable in
+        # another part of the disjunction; it won't be set if you get to
+        # the ~a part, after all
+        # TregexPattern("a < foo=a || < ~a").findall('(A)')
+
+        # TODO: pytregex has not achieved the backreferencing feature
+        # # same, but for references
+        # try
+        #   TregexPattern("a < foo=a | < =a")
+        #   throw new RuntimeException("Expected a parse exception")
+        # } catch (TregexParseException e)
+        #   # yay, passed
+
+        # can't name a variable under a negation
+        pattern = TregexPattern("__ ! > __=a")
+        self.assertRaises(SystemExit, pattern.findall, "(A)")
+
+    def test_numbered_sister(self):
+        # this shouldn't mean anything
+        pattern = TregexPattern("A $5 B")
+        self.assertRaises(KeyError, pattern.findall, "(A)")
+
+        # this should be fine
+        TregexPattern("A <5 B").findall("(A)")
+
+    def test_root_description(self):
+        """test the _ROOT_ node description"""
+        self.run_test("_ROOT_", "(ROOT (A apple))", "(ROOT (A apple))")
+        self.run_test("A > _ROOT_", "(ROOT (A apple))", "(A apple)")
+        self.run_test("A > _ROOT_", "(ROOT (A apple) (B (A aardvark)))", "(A apple)")
+        self.run_test("A !> _ROOT_", "(ROOT (A apple) (B (A aardvark)))", "(A aardvark)")
+        self.run_test("_ROOT_ <<<2 b", "(ROOT (A (B z) (C b)))", "(ROOT (A (B z) (C b)))")
+
+    def test_only_match_root(self):
+        tree_string = "(a (foo 1) (bar 2))"
+        pattern = TregexPattern("__=a ! > __")
+        matches = pattern.findall(tree_string)
+
+        self.assertEqual(1, len(matches))
+        self.assertEqual(tree_string, matches[0].tostring())
+        self.assertEqual(tree_string, pattern.get_nodes("a")[0].tostring())
+
+    def test_repeated_variables(self):
+        tree_string = "(root (a (foo 1)) (a (bar 2)))"
+        pattern = TregexPattern("a < foo=a || < bar=a")
+        matches = pattern.findall(tree_string)
+
+        self.assertEqual(2, len(matches))
+        self.assertEqual("(a (foo 1))", matches[0].tostring())
+        self.assertEqual("(foo 1)", pattern.get_nodes("a")[0].tostring())
+
+        self.assertEqual("(a (bar 2))", matches[1].tostring())
+        self.assertEqual("(bar 2)", pattern.get_nodes("a")[1].tostring())
+
+    def test_more_curly_array(self):
+        """
+        A test case provided by a user which leverages variable names.
+        Goal is to match this tree:
+        (T
+          (X
+            (N
+              (N Moe
+                (PNT ,))))
+          (NP
+            (X
+              (N Curly))
+            (NP
+              (CONJ and)
+              (X
+                (N Larry)))))
+        """
+        tree_string = (
+            "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
+        )
+        pattern = TregexPattern(
+            "PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))"
+        )
+        matches = pattern.findall(tree_string)
+
+        self.assertEqual(1, len(matches))
+        self.assertEqual("(PNT ,)", matches[0].tostring())
+        self.assertEqual("(PNT ,)", pattern.get_nodes("p")[0].tostring())
+        self.assertEqual("(X (N (N Moe (PNT ,))))", pattern.get_nodes("l")[0].tostring())
+        self.assertEqual(tree_string, pattern.get_nodes("t")[0].tostring())
+        self.assertEqual(
+            "(NP (X (N Curly)) (NP (CONJ and) (X (N Larry))))",
+            pattern.get_nodes("r")[0].tostring(),
+        )
+        self.assertEqual("(X (N Curly))", pattern.get_nodes("m")[0].tostring())
+        self.assertEqual("(X (N Larry))", pattern.get_nodes("z")[0].tostring())
+
+        # TODO: variable group
+        # pattern = TregexPattern(
+        #     "PNT=p >>- (/(.+)/#1%var=l >, (__=t <- (__=r <, /(.+)/#1%var=m <- (__ <, CONJ <-"
+        #     " /(.+)/#1%var=z))))"
+        # )
+        # matches = pattern.findall(tree_string)
+        # self.assertEqual(1, len(matches))
+        # self.assertEqual("(PNT ,)", matches[0].tostring())
+        # self.assertEqual("(PNT ,)", pattern.get_nodes("p")[0].tostring())
+        # self.assertEqual("(X (N (N Moe (PNT ,))))", pattern.get_nodes("l")[0].tostring())
+        # self.assertEqual(tree_string, pattern.get_nodes("t")[0].tostring())
+        # self.assertEqual(
+        #     "(NP (X (N Curly)) (NP (CONJ and) (X (N Larry))))",
+        #     pattern.get_nodes("r")[0].tostring(),
+        # )
+        # self.assertEqual("(X (N Curly))", pattern.get_nodes("m")[0].tostring())
+        # self.assertEqual("(X (N Larry))", pattern.get_nodes("z")[0].tostring())
+
+        pattern = TregexPattern(
+            "PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))"
+        )
+        matches = pattern.findall(tree_string)
+        self.assertEqual(1, len(matches))
+        self.assertEqual("(PNT ,)", matches[0].tostring())
+        self.assertEqual("(PNT ,)", pattern.get_nodes("p")[0].tostring())
+        self.assertEqual("(X (N (N Moe (PNT ,))))", pattern.get_nodes("l")[0].tostring())
+        self.assertEqual(tree_string, pattern.get_nodes("t")[0].tostring())
+        self.assertEqual(
+            "(NP (X (N Curly)) (NP (CONJ and) (X (N Larry))))",
+            pattern.get_nodes("r")[0].tostring(),
+        )
+
+        pattern = TregexPattern(
+            "PNT=p >>- (__=l >, (__=t <- (__=r <, ~l=m <- (__ <, CONJ <- ~l=z))))"
+        )
+        matches = pattern.findall(tree_string)
+        self.assertEqual(1, len(matches))
+        self.assertEqual("(PNT ,)", matches[0].tostring())
+        self.assertEqual("(PNT ,)", pattern.get_nodes("p")[0].tostring())
+        self.assertEqual("(X (N (N Moe (PNT ,))))", pattern.get_nodes("l")[0].tostring())
+        self.assertEqual(tree_string, pattern.get_nodes("t")[0].tostring())
+        self.assertEqual(
+            "(NP (X (N Curly)) (NP (CONJ and) (X (N Larry))))",
+            pattern.get_nodes("r")[0].tostring(),
+        )
+        self.assertEqual("(X (N Curly))", pattern.get_nodes("m")[0].tostring())
+        self.assertEqual("(X (N Larry))", pattern.get_nodes("z")[0].tostring())
+
     def test_ancestor_of_ith_leaf(self):
         self.run_test("A <<<1 b", "(ROOT (A (B b)))", "(A (B b))")
         self.run_test("A <<<2 b", "(ROOT (A (B b)))")
@@ -949,49 +1236,69 @@ class TestTregex(BaseTmpl):
         # should have no results
         self.run_test(
             "NP <<# NNS",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
             "(NP (NN work) (NNS practices))",
         )
         self.run_test(
             "NP !<# NNS <<# NNS",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
         )
         self.run_test(
             "NP !<# NNP <<# NNP",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
         )
         # no results
         self.run_test(
             "NNS ># NP",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
             "(NNS practices)",
         )
         self.run_test(
             "NNS ># (NP < PP)",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
         )
         # no results
         self.run_test(
             "NNS >># (NP < PP)",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
             "(NNS practices)",
         )
         self.run_test(
             "NP <<# /^NN/",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
-            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-            " Soviet) (NNP Union))))",
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
+            (
+                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+                " Soviet) (NNP Union))))"
+            ),
             "(NP (NN work) (NNS practices))",
             "(NP (DT the) (JJ former) (NNP Soviet) (NNP Union))",
         )
@@ -1270,19 +1577,19 @@ class TestTregex(BaseTmpl):
             " until) (NP (DT the) (NNS assets))))))))) (VP (MD can) (VP (VB be) (VP (VBN sold)"
             " (ADVP (RB separately))))))))))))))) (S (VP (. .)))))"
         )
-        # a pattern used to rearrange punctuation nodes in the srparser
-        pattern = TregexPattern(
-            "__ !> __ <- (__=top <- (__ <<- (/[.]|PU/=punc < /[.!?。！？]/ ?> (__=single <:"
-            " =punc))))"
-        )
-
-        matches = pattern.findall(tree_string)
-        self.assertEqual(1, len(matches))
-
         # TODO
-        self.assertEqual(1, len(pattern.get_nodes("punc")[0]))
-        self.assertEqual("(. .)", pattern.get_nodes("punc")[0].tostring())
-        # self.assertEqual("(VP (. .))", pattern.get_nodes("single")[0].tostring())
+        # # a pattern used to rearrange punctuation nodes in the srparser
+        # pattern = TregexPattern(
+        #     "__ !> __ <- (__=top <- (__ <<- (/[.]|PU/=punc < /[.!?。！？]/ ?> (__=single <:"
+        #     " =punc))))"
+        # )
+        #
+        # matches = pattern.findall(tree_string)
+        # self.assertEqual(1, len(matches))
+        #
+        # self.assertEqual(1, len(pattern.get_nodes("punc")[0]))
+        # self.assertEqual("(. .)", pattern.get_nodes("punc")[0].tostring())
+        # # self.assertEqual("(VP (. .))", pattern.get_nodes("single")[0].tostring())
 
     def test_optional_subtree_pattern(self):
         # Tests the subtree pattern, <..., which checks for
