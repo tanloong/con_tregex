@@ -290,8 +290,9 @@ class TregexPattern:
             # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
             # https://github.com/dabeaz/ply/issues/215
-            ("left", "IMAGINE_REDUCE"),
             ("left", "OR_REL"),
+            ("left", "RELATION"),
+            ("left", "IMAGINE_REDUCE"),
             ("right", "OR_NODE"),
             ("nonassoc", "="),
         )
@@ -360,6 +361,7 @@ class TregexPattern:
             """
             # logging.debug("following rule: node_descriptions -> node_descriptions OR_NODE node_description")
             p[1].add_description(p[3])
+            p[1].set_string_repr(f"{p[1].string_repr}{p[2]}{p[3].value}")
 
             p[0] = p[1]
 
@@ -494,7 +496,7 @@ class TregexPattern:
             """
             and_conditions : and_conditions and_condition
             """
-            # logging.debug("following rule: and_conditions -> and_conditions and_condition")
+            logging.debug("following rule: and_conditions -> and_conditions and_condition")
             p[1].append_condition(p[2])
 
             p[0] = p[1]
@@ -503,6 +505,7 @@ class TregexPattern:
             """
             and_conditions : and_condition
             """
+            logging.debug("following rule: and_conditions -> and_condition")
             p[0] = And([p[1]])
 
         def p_multi_relation_named_nodes(p):
@@ -581,13 +584,6 @@ class TregexPattern:
             logging.debug("following rule: and_condition : ( and_condition )")
             p[0] = p[2]
 
-        def p_lparen_and_conditions_rparen(p):
-            """
-            and_conditions : '(' and_conditions ')'
-            """
-            logging.debug("following rule: and_conditions : ( and_conditions )")
-            p[0] = p[2]
-
         def p_and_conditions_or_and_conditions(p):
             """
             or_conditions : and_conditions OR_REL and_conditions
@@ -605,54 +601,24 @@ class TregexPattern:
             logging.debug(
                 f"following rule: or_conditions -> or_conditions {p[2]} and_conditions"
             )
-            p[1].append_condition(p[2])
+            p[1].append_condition(p[3])
 
             p[0] = p[1]
 
         def p_lparen_or_conditions_rparen(p):
             """
-            or_conditions : '(' or_conditions ')'
+            and_condition : '(' or_conditions ')'
+                          | '[' or_conditions ']'
             """
-            logging.debug("following rule: or_conditions -> ( or_conditions )")
+            logging.debug(f"following rule: and_condition -> {p[1]} or_conditions {p[3]}")
             p[0] = p[2]
 
         def p_not_lparen_and_conditions_rparen(p):
             """
-            and_condition : '!' '(' and_conditions ')'
-                          | '!' '[' and_conditions ']'
+            and_condition : '(' and_conditions ')'
+                          | '[' and_conditions ']'
             """
-            logging.debug(f"following rule: and_condition -> ! {p[2]} and_conditions {p[4]}")
-            p[0] = Not(p[3])
-
-        def p_optional_lparen_and_conditions_rparen(p):
-            """
-            and_condition : '?' '(' and_conditions ')'
-                          | '?' '[' and_conditions ']'
-            """
-            logging.debug(f"following rule: and_condition -> ? {p[2]} and_conditions {p[4]}")
-            p[0] = Opt(p[3])
-
-        def p_not_lparen_or_conditions_rparen(p):
-            """
-            and_condition : '!' '(' or_conditions ')'
-                          | '!' '[' or_conditions ']'
-            """
-            logging.debug(f"following rule: not_and_conditions -> ! {p[2]} or_conditions {p[4]}")
-            p[0] = Not(p[3])
-
-        def p_optional_lparen_or_conditions_rparen(p):
-            """
-            and_condition : '?' '(' or_conditions ')'
-                          | '?' '[' or_conditions ']'
-            """
-            logging.debug(f"following rule: and_condition -> ? {p[2]} or_conditions {p[4]}")
-            p[0] = Opt(p[3])
-
-        def p_lbracket_or_conditions_rbracket(p):
-            """
-            or_conditions : '[' or_conditions ']'
-            """
-            logging.debug("following rule: or_conditions -> [ or_conditions ]")
+            logging.debug(f"following rule: and_condition -> ! {p[1]} and_conditions {p[3]}")
             p[0] = p[2]
 
         def p_named_nodes_and_conditions(p):
@@ -723,4 +689,4 @@ class TregexPattern:
                 msg = "Parsing Error at EOF"
             raise SystemExit(msg)
 
-        return yacc.yacc(debug=True, start="expr")
+        return yacc.yacc(debug=False, start="expr")
