@@ -500,3 +500,9 @@ class Tree:
             for kid in self.children:
                 leaves.extend(kid.get_leaves())
         return leaves
+
+    def span_string(self) -> str:
+        """
+        Return String of leaves spanned by this tree
+        """
+        return " ".join(leaf.tostring() for leaf in self.get_leaves() if leaf is not None)
