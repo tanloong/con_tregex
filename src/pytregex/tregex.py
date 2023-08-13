@@ -291,7 +291,7 @@ class TregexPattern:
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
             # https://github.com/dabeaz/ply/issues/215
             ("left", "OR_REL"),
-            ("left", "RELATION"),
+            ("left", "RELATION", "REL_W_STR_ARG", "REL_W_NUM_ARG", "MULTI_RELATION"),
             ("left", "IMAGINE_REDUCE"),
             ("right", "OR_NODE"),
             ("nonassoc", "="),
