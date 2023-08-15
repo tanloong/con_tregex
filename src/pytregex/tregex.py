@@ -291,7 +291,8 @@ class TregexPattern:
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
             # https://github.com/dabeaz/ply/issues/215
             ("left", "OR_REL"),
-            ("left", "RELATION", "REL_W_STR_ARG", "REL_W_NUM_ARG", "MULTI_RELATION"),
+            # REL_W_NUM_ARG don't have to be declared, as they have already been as t_RELATION
+            ("left", "RELATION", "REL_W_STR_ARG", "MULTI_RELATION"),
             ("left", "IMAGINE_REDUCE"),
             ("right", "OR_NODE"),
             ("nonassoc", "="),
@@ -457,26 +458,26 @@ class TregexPattern:
 
         def p_not_and_condition(p):
             """
-            and_condition : '!' and_condition
+            condition_op : '!' condition_op
             """
-            logging.debug("following rule: and_condition -> ! and_condition")
+            logging.debug("following rule: condition_op -> ! condition_op")
             p[0] = Not(p[2])
 
         def p_optional_and_condition(p):
             """
-            and_condition : '?' and_condition
+            condition_op : '?' condition_op
             """
-            logging.debug("following rule: and_condition -> ? and_condition")
+            logging.debug("following rule: condition_op -> ? condition_op")
             p[0] = Opt(p[2])
 
         # 3. and_conditions
         def p_relation_data_named_nodes(p):
             """
-            and_condition : relation_data named_nodes %prec IMAGINE_REDUCE
+            condition_op : relation_data named_nodes %prec IMAGINE_REDUCE
             """
             # %prec IMAGINE_REDUCE: https://github.com/dabeaz/ply/issues/215
             logging.debug(
-                f"following rule: and_condition -> {p[1].string_repr} {p[2].string_repr}"
+                f"following rule: condition_op -> {p[1].string_repr} {p[2].string_repr}"
             )
             relation_data = p[1]
             those_nodes, that_name = p[2].nodes, p[2].name
@@ -487,25 +488,25 @@ class TregexPattern:
 
         def p_and_and_condition(p):
             """
-            and_condition : '&' and_condition
+            condition_op : '&' condition_op
             """
-            # logging.debug("following rule: and_condition -> & and_condition")
+            # logging.debug("following rule: condition_op -> & condition_op")
             p[0] = p[2]
 
         def p_and_conditions_and_condition(p):
             """
-            and_conditions : and_conditions and_condition
+            and_conditions : and_conditions condition_op
             """
-            logging.debug("following rule: and_conditions -> and_conditions and_condition")
+            logging.debug("following rule: and_conditions -> and_conditions condition_op")
             p[1].append_condition(p[2])
 
             p[0] = p[1]
 
         def p_and_condition(p):
             """
-            and_conditions : and_condition
+            and_conditions : condition_op
             """
-            logging.debug("following rule: and_conditions -> and_condition")
+            logging.debug("following rule: and_conditions -> condition_op")
             p[0] = And([p[1]])
 
         def p_multi_relation_named_nodes(p):
@@ -563,14 +564,14 @@ class TregexPattern:
 
         def p_not_and_conditions_multi_relation(p):
             """
-            and_condition : '!' and_conditions_multi_relation
+            condition_op : '!' and_conditions_multi_relation
             """
-            logging.debug("following rule: and_condition -> ! and_conditions_multi_relation")
+            logging.debug("following rule: condition_op -> ! and_conditions_multi_relation")
             p[0] = Not(p[2])
 
         def p_optional_and_conditions_multi_relation(p):
             """
-            and_condition : '?' and_conditions_multi_relation
+            condition_op : '?' and_conditions_multi_relation
             """
             logging.debug(
                 "following rule: optional_and_condition -> ? and_conditions_multi_relation"
@@ -579,9 +580,9 @@ class TregexPattern:
 
         def p_lparen_and_condition_rparen(p):
             """
-            and_condition : '(' and_condition ')'
+            condition_op : '(' condition_op ')'
             """
-            logging.debug("following rule: and_condition : ( and_condition )")
+            logging.debug("following rule: condition_op : ( condition_op )")
             p[0] = p[2]
 
         def p_and_conditions_or_and_conditions(p):
@@ -607,18 +608,18 @@ class TregexPattern:
 
         def p_lparen_or_conditions_rparen(p):
             """
-            and_condition : '(' or_conditions ')'
+            condition_op : '(' or_conditions ')'
                           | '[' or_conditions ']'
             """
-            logging.debug(f"following rule: and_condition -> {p[1]} or_conditions {p[3]}")
+            logging.debug(f"following rule: condition_op -> {p[1]} or_conditions {p[3]}")
             p[0] = p[2]
 
         def p_not_lparen_and_conditions_rparen(p):
             """
-            and_condition : '(' and_conditions ')'
+            condition_op : '(' and_conditions ')'
                           | '[' and_conditions ']'
             """
-            logging.debug(f"following rule: and_condition -> ! {p[1]} and_conditions {p[3]}")
+            logging.debug(f"following rule: condition_op -> ! {p[1]} and_conditions {p[3]}")
             p[0] = p[2]
 
         def p_named_nodes_and_conditions(p):
