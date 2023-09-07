@@ -367,7 +367,7 @@ class Tree:
                     current_tree = stack_parent.pop()
                     previous_bracket = token
             else:
-                if previous_token != "(":
+                if previous_token != open_b:
                     tree_new = cls(label=token, parent=current_tree)
                     current_tree.children.append(tree_new)
                 else:
