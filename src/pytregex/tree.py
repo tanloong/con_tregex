@@ -506,3 +506,17 @@ class Tree:
         Return String of leaves spanned by this tree
         """
         return " ".join(leaf.tostring() for leaf in self.get_leaves() if leaf is not None)
+
+    @property
+    def num_edges(self) -> int:
+        """
+        Return total number of edges across all nodes
+        """
+        if self.is_leaf:
+            return 1
+
+        n = sum(kid.num_edges for kid in self.children)
+        if self.parent is not None:
+            n += 1
+
+        return n
