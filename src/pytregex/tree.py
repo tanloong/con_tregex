@@ -377,16 +377,19 @@ class Tree:
         if len(stack_parent) > 0:
             raise ValueError("failed to build tree from string with unpaired parentheses")
 
+        if root_.label is None and len(root_.children) > 1:
+            return [cls._remove_extra_level(kid) for kid in root_.children]
+        else:
+            return [cls._remove_extra_level(root_)]
+
+    @classmethod
+    def _remove_extra_level(cls, root) -> "Tree":
         # get rid of extra levels of root with None label
         # e.g.: "((S (NP ...) (VP ...)))" -> "S (NP ...) (VP ...)"
-        while root_.label is None and len(root_.children) == 1:
-            root_ = root_.children[0]
-            root_.parent = None
-
-        if root_.label is None and len(root_.children) > 1:
-            return root_.children
-        else:
-            return [root_]
+        while root.label is None and len(root.children) == 1:
+            root = root.children[0]
+            root.parent = None
+        return root
 
     @property
     def root(self) -> "Tree":
