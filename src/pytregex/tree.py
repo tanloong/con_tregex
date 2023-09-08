@@ -510,16 +510,42 @@ class Tree:
         """
         return " ".join(leaf.tostring() for leaf in self.get_leaves() if leaf is not None)
 
-    @property
-    def num_edges(self) -> int:
+    def get_num_edges_(self):
+        """
+        Return total number of edges across all nodes
+        """
+        from operator import mul
+
+        if self.is_leaf:
+            return 1, 1
+
+        ns, weights = zip(*(kid.get_num_edges_() for kid in self.children))
+        ret_n = sum(map(mul, ns, weights))
+        ret_weight = max(weights) + 1
+        if self.parent is not None:
+            ret_n += ret_weight
+
+        if ret_n == ret_weight:
+            return 1, 1
+
+        print(f"{self.label=}\t{ret_n=}\t{ret_weight=}")
+        return ret_n, ret_weight
+
+    def get_num_edges(self):
         """
         Return total number of edges across all nodes
         """
         if self.is_leaf:
-            return 1
+            return 1, 1
 
-        n = sum(kid.num_edges for kid in self.children)
+        ns, weights = zip(*(kid.get_num_edges() for kid in self.children))
+        ret_n = sum(ns)
+        ret_weight = max(weights) + 1
         if self.parent is not None:
-            n += 1
+            ret_n += ret_weight
 
-        return n
+        if ret_n == sum(range(1, ret_weight + 1)):
+            return 1, 1
+
+        print(f"{self.label=}\t{ret_n=}\t{ret_weight=}")
+        return ret_n, ret_weight
