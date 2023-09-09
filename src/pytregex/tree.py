@@ -536,16 +536,19 @@ class Tree:
         Return total number of edges across all nodes
         """
         if self.is_leaf:
+            print(f"{self.label=}\t1\t1")
             return 1, 1
 
         ns, weights = zip(*(kid.get_num_edges() for kid in self.children))
-        ret_n = sum(ns)
-        ret_weight = max(weights) + 1
-        if self.parent is not None:
-            ret_n += ret_weight
+        descendant_n = sum(ns)
+        descendant_weight = max(weights)
 
-        if ret_n == sum(range(1, ret_weight + 1)):
-            return 1, 1
+        if self.parent is None or self.parent.num_children == 1:
+            print(f"{self.label=}\t{descendant_n=}\t{descendant_weight=}")
+            return descendant_n, descendant_weight
+
+        ret_weight = descendant_weight + 1
+        ret_n = descendant_n + ret_weight
 
         print(f"{self.label=}\t{ret_n=}\t{ret_weight=}")
         return ret_n, ret_weight
