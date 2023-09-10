@@ -349,8 +349,7 @@ class Tree:
             )
             setattr(cls, "token_re", token_re)
 
-        for match in token_re.finditer(string):
-            token = match.group()
+        for token in token_re.findall(string):
             if token == open_b:
                 stack_parent.append(current_tree)
 
