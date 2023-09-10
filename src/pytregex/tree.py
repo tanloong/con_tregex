@@ -337,7 +337,6 @@ class Tree:
         root_: "Tree" = cls()
         current_tree: "Tree" = root_
         previous_token: Optional[str] = None
-        previous_bracket: Optional[str] = None
         stack_parent: List["Tree"] = []
 
         # store `token_re` to avoid repeated regex compiling
@@ -356,7 +355,6 @@ class Tree:
                 tree_new = cls(parent=current_tree)
                 current_tree.children.append(tree_new)
                 current_tree = tree_new
-                previous_bracket = token
             elif token == close_b:
                 if not stack_parent:
                     raise ValueError(
@@ -364,7 +362,6 @@ class Tree:
                     )
                 else:
                     current_tree = stack_parent.pop()
-                    previous_bracket = token
             else:
                 if previous_token != open_b:
                     tree_new = cls(label=token, parent=current_tree)
