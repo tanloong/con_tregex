@@ -1683,6 +1683,6 @@ class TestTregex(BaseTmpl):
         self.assertEqual(len(matches), len(expected_results))
 
         for match, expected_result in zip(matches, expected_results):
-            # Tree.fromstring returns a Tree list of length 1 for single-tree input
-            expected_tree = Tree.fromstring(expected_result)[0]
+            g = Tree.fromstring(expected_result)
+            expected_tree = next(g, None)
             self.assertEqual(match.tostring(), expected_tree.tostring())

@@ -1,9 +1,10 @@
-# Modified from implementations of
-# [NLTK](https://github.com/nltk/nltk/blob/develop/nltk/tree/tree.py) and
-# [Stanford](https://github.com/stanfordnlp/CoreNLP/blob/139893242878ecacde79b2ba1d0102b855526610/src/edu/stanford/nlp/trees/Tree.java)
+# translated from [CoreNLP](https://github.com/stanfordnlp/CoreNLP/blob/139893242878ecacde79b2ba1d0102b855526610/src/edu/stanford/nlp/trees/Tree.java)
 
+from collections import deque
 import re
-from typing import Any, Generator, List, Optional, TYPE_CHECKING, Tuple
+from typing import Any, Deque, Generator, List, Optional, TYPE_CHECKING, Tuple
+
+from peekable import peekable
 
 if TYPE_CHECKING:
     from head_finder import HeadFinder
@@ -320,24 +321,28 @@ class Tree:
         else:
             raise TypeError(f"label must be str, not {type(label).__name__}")
 
+    def set_parent(self, node: "Tree") -> None:
+        self.parent = node
+
+    def add_child(self, node: "Tree") -> None:
+        node.set_parent(self)
+        self.children.append(node)
+
     @classmethod
-    def fromstring(cls, string: str, brackets: str = "()") -> List["Tree"]:
+    def fromstring(cls, string: str, brackets: str = "()") -> Generator["Tree", Any, None]:
+        # translated from CoreNLP's PennTreeReader
+        # https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/PennTreeReader.java#L144
+
         # this code block about `brackets` is borrowed from nltk
-        # (https://github.com/nltk/nltk/blob/develop/nltk/tree/tree.py#L641)
+        # https://github.com/nltk/nltk/blob/develop/nltk/tree/tree.py#L641
         if not isinstance(brackets, str) or len(brackets) != 2:
             raise TypeError("brackets must be a length-2 string")
         if re.search(r"\s", brackets):
             raise TypeError("whitespace brackets not allowed")
 
-        open_b = brackets[0]
-        close_b = brackets[1]
+        open_b, close_b = brackets
         open_pattern = re.escape(open_b)
         close_pattern = re.escape(close_b)
-
-        root_: "Tree" = cls()
-        current_tree: "Tree" = root_
-        previous_token: Optional[str] = None
-        stack_parent: List["Tree"] = []
 
         # store `token_re` to avoid repeated regex compiling
         try:
@@ -348,35 +353,49 @@ class Tree:
             )
             setattr(cls, "token_re", token_re)
 
-        for token in token_re.findall(string):
-            if token == open_b:
-                stack_parent.append(current_tree)
+        stack_parent: Deque["Tree"] = deque()
+        current_tree = None
 
-                tree_new = cls(parent=current_tree)
-                current_tree.children.append(tree_new)
-                current_tree = tree_new
+        tokens = peekable(token_re.findall(string))
+        while (token := next(tokens, None)) is not None:
+            if token == open_b:
+                label = None if tokens.peek() == open_b else next(tokens, None)
+
+                if label == close_b:
+                    continue
+
+                new_tree = cls(label)
+
+                if current_tree is None:
+                    stack_parent.append(new_tree)
+                else:
+                    current_tree.add_child(new_tree)
+                    stack_parent.append(current_tree)
+
+                current_tree = new_tree
             elif token == close_b:
-                if not stack_parent:
+                if len(stack_parent) == 0:
                     raise ValueError(
-                        "failed to build tree from string with unpaired parentheses"
+                        "failed to build tree from string with extra non-matching right"
+                        " parentheses"
                     )
                 else:
                     current_tree = stack_parent.pop()
+
+                    if len(stack_parent) == 0:
+                        yield cls._remove_extra_level(current_tree)
+
+                        current_tree = None
+                        continue
             else:
-                if previous_token != open_b:
-                    tree_new = cls(label=token, parent=current_tree)
-                    current_tree.children.append(tree_new)
-                else:
-                    current_tree.label = token
-            previous_token = token
+                if current_tree is None:
+                    continue
 
-        if len(stack_parent) > 0:
-            raise ValueError("failed to build tree from string with unpaired parentheses")
+                new_tree = cls(token)
+                current_tree.add_child(new_tree)
 
-        if root_.label is None and len(root_.children) > 1:
-            return [cls._remove_extra_level(kid) for kid in root_.children]
-        else:
-            return [cls._remove_extra_level(root_)]
+        if current_tree is not None:  # type:ignore
+            raise ValueError("incomplete tree (extra left parentheses in input)")
 
     @classmethod
     def _remove_extra_level(cls, root) -> "Tree":
@@ -506,33 +525,12 @@ class Tree:
         """
         return " ".join(leaf.tostring() for leaf in self.get_leaves() if leaf is not None)
 
-    def get_num_edges_(self):
-        """
-        Return total number of edges across all nodes
-        """
-        from operator import mul
-
-        if self.is_leaf:
-            return 1, 1
-
-        ns, weights = zip(*(kid.get_num_edges_() for kid in self.children))
-        ret_n = sum(map(mul, ns, weights))
-        ret_weight = max(weights) + 1
-        if self.parent is not None:
-            ret_n += ret_weight
-
-        if ret_n == ret_weight:
-            return 1, 1
-
-        print(f"{self.label=}\t{ret_n=}\t{ret_weight=}")
-        return ret_n, ret_weight
-
     def get_num_edges(self):
         """
         Return total number of edges across all nodes
         """
         if self.is_leaf:
-            print(f"{self.label=}\t1\t1")
+            # print(f"{self.label=}\t1\t1")
             return 1, 1
 
         ns, weights = zip(*(kid.get_num_edges() for kid in self.children))
@@ -540,11 +538,11 @@ class Tree:
         descendant_weight = max(weights)
 
         if self.parent is None or self.parent.num_children == 1:
-            print(f"{self.label=}\t{descendant_n=}\t{descendant_weight=}")
+            # print(f"{self.label=}\t{descendant_n=}\t{descendant_weight=}")
             return descendant_n, descendant_weight
 
         ret_weight = descendant_weight + 1
         ret_n = descendant_n + ret_weight
 
-        print(f"{self.label=}\t{ret_n=}\t{ret_weight=}")
+        # print(f"{self.label=}\t{ret_n=}\t{ret_weight=}")
         return ret_n, ret_weight

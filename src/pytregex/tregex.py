@@ -258,7 +258,7 @@ class TregexPattern:
         self.pattern = tregex_pattern
 
     def findall(self, tree_string: str) -> List[Tree]:
-        trees = Tree.fromstring(tree_string)
+        trees = list(Tree.fromstring(tree_string))
         parser = self.make_parser(trees)
         self._reset_lexer_state()
 

@@ -12,20 +12,36 @@ from .base_tmpl import tree as tree_string
 class TestTree(BaseTmpl):
     def setUp(self):
         self.tree_string = tree_string
-        self.tree = Tree.fromstring(self.tree_string)[0]
+        self.tree = next(Tree.fromstring(self.tree_string))
         return super().setUp()
 
     def test_fromstring(self):
-        tree_string = "(ROOT (S (NP (EX There))))"
-        # a tree with unpaired parenthesis is illegal
-        self.assertRaises(ValueError, Tree.fromstring, tree_string.rstrip(")"))
-        self.assertRaises(ValueError, Tree.fromstring, tree_string.lstrip("("))
+        tree_string1 = "(NP (EX There)"
+        tree_string2 = "NP (EX There))"
+        tree_string3 = "(NP (EX There)))"
 
-        # see whether extra levels of root with None label has been removed
-        self.assertEqual(Tree.fromstring(f"(({tree_string}))"), Tree.fromstring(tree_string))
+        g1 = Tree.fromstring(tree_string1)
+        # File "pytregex/src/pytregex/tree.py", line 398, in fromstring
+        #  raise ValueError("incomplete tree (extra left parentheses in input)")
+        self.assertRaises(ValueError, next, g1)
+
+        g2 = Tree.fromstring(tree_string2)
+        next(g2)
+        # File "pytregex/src/pytregex/tree.py", line 378, in fromstring
+        #  ValueError: failed to build tree from string with extra non-matching right parentheses
+        self.assertRaises(ValueError, next, g2)
+
+        g3 = Tree.fromstring(tree_string3)
+        next(g3)
+        # File "pytregex/src/pytregex/tree.py", line 378, in fromstring
+        #  ValueError: failed to build tree from string with extra non-matching right parentheses
+        self.assertRaises(ValueError, next, g3)
+
+        # make sure that extra levels of root with None label has been removed
+        self.assertEqual(next(Tree.fromstring(f"(({tree_string}))")), next(Tree.fromstring(tree_string)))
 
     def test_set_label(self):
-        tree = Tree.fromstring(self.tree_string)[0]
+        tree = next(Tree.fromstring(self.tree_string))
         new_label = "TOOR"  # inverse of ROOT
         tree.set_label(new_label)
         self.assertEqual(tree.label, new_label)
@@ -35,7 +51,7 @@ class TestTree(BaseTmpl):
     def test_eq(self):
         from copy import deepcopy
 
-        tree = Tree.fromstring(self.tree_string)[0]
+        tree = next(Tree.fromstring(self.tree_string))
 
         # compare Tree with other classes
         self.assertNotEqual(tree, "non-Tree object")
@@ -75,11 +91,11 @@ class TestTree(BaseTmpl):
         self.assertRaises(TypeError, self.tree.__getitem__, "string")
 
     def test_len(self):
-        tree = Tree.fromstring(self.tree_string)[0]
+        tree = next(Tree.fromstring(self.tree_string))
         self.assertEqual(len(tree), len(tree.children))
 
     def test_num_children(self):
-        tree = Tree.fromstring(self.tree_string)[0]
+        tree = next(Tree.fromstring(self.tree_string))
         self.assertEqual(tree.num_children, len(tree.children))
 
     def test_sister_index(self):
@@ -119,7 +135,7 @@ class TestTree(BaseTmpl):
         self.assertFalse(tree.is_pre_terminal)
 
     def test_tostring(self):
-        tree = Tree.fromstring(self.tree_string)[0]
+        tree = next(Tree.fromstring(self.tree_string))
         # suppress onto one line
         tree_string = re.sub(r"\n\s+", " ", self.tree_string.strip())
         self.assertEqual(tree.tostring(), tree_string)
