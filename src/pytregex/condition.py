@@ -8,9 +8,6 @@ if TYPE_CHECKING:
     from tree import Tree
     from relation import AbstractRelationData
 
-# translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java
-# last modified at Apr 3, 2022 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/tregex/Relation.java)
-
 
 class Condition(ABC):
     @abstractmethod
@@ -120,7 +117,13 @@ class Or(Condition):
         res = []
         for condition in self.conditions:
             res_cur_cond, backrefs_map_cur_cond = condition.match(these_nodes, this_name)
-            res += res_cur_cond
+            for matched_this_node in res_cur_cond:
+                for i,node in enumerate(res):
+                    if matched_this_node is node:
+                        res.insert(i, matched_this_node)
+                        break
+                else:
+                    res.append(matched_this_node)
 
             for name, nodes in backrefs_map_cur_cond.items():
                 backrefs_map[name] = backrefs_map.get(name, []) + nodes

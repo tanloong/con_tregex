@@ -1669,6 +1669,17 @@ class TestTregex(BaseTmpl):
             "(NP (NP (NN anyone)) (ADJP (JJ else)))",
         )
 
+    def test_disjunction_order(self):
+        """
+        Check output node order when patterns contain OR_REL, matchings that
+        are indeed the same node should appear next to each other
+        """
+        pattern = TregexPattern("A [< B || < C]")
+        matches = pattern.findall("(A (B b1) (C c1)) (A (B b2))")
+        self.assertEqual("(A (B b1) (C c1))", matches[0].tostring())
+        self.assertEqual("(A (B b1) (C c1))",matches[1].tostring())
+        self.assertEqual("(A (B b2))",matches[2].tostring())
+
     def run_test(
         self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str
     ):
