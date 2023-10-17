@@ -1236,69 +1236,49 @@ class TestTregex(BaseTmpl):
         # should have no results
         self.run_test(
             "NP <<# NNS",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NP (NN work) (NNS practices))",
         )
         self.run_test(
             "NP !<# NNS <<# NNS",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
         )
         self.run_test(
             "NP !<# NNP <<# NNP",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
         )
         # no results
         self.run_test(
             "NNS ># NP",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NNS practices)",
         )
         self.run_test(
             "NNS ># (NP < PP)",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
         )
         # no results
         self.run_test(
             "NNS >># (NP < PP)",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NNS practices)",
         )
         self.run_test(
             "NP <<# /^NN/",
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
-            (
-                "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
-                " Soviet) (NNP Union))))"
-            ),
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
+            "(NP (NP (NN work) (NNS practices)) (PP (IN in) (NP (DT the) (JJ former) (NNP"
+            " Soviet) (NNP Union))))",
             "(NP (NN work) (NNS practices))",
             "(NP (DT the) (JJ former) (NNP Soviet) (NNP Union))",
         )
@@ -1674,11 +1654,16 @@ class TestTregex(BaseTmpl):
         Check output node order when patterns contain OR_REL, matchings that
         are indeed the same node should appear next to each other
         """
-        pattern = TregexPattern("A [< B || < C]")
-        matches = pattern.findall("(A (B b1) (C c1)) (A (B b2))")
-        self.assertEqual("(A (B b1) (C c1))", matches[0].tostring())
-        self.assertEqual("(A (B b1) (C c1))",matches[1].tostring())
-        self.assertEqual("(A (B b2))",matches[2].tostring())
+        self.run_test(
+            "A [< B || < C]",
+            "(A (B b1) (C c1)) (A (B b2))",
+            "(A (B b1) (C c1))",
+            "(A (B b1) (C c1))",
+            "(A (B b2))",
+        )
+
+    def test_negated_exclusion(self):
+        self.run_test("A !> A", "(A (A)) (A)", "(A (A))", "(A)")
 
     def run_test(
         self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str

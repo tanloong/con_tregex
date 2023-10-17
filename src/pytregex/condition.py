@@ -118,7 +118,7 @@ class Or(Condition):
         for condition in self.conditions:
             res_cur_cond, backrefs_map_cur_cond = condition.match(these_nodes, this_name)
             for matched_this_node in res_cur_cond:
-                for i,node in enumerate(res):
+                for i, node in enumerate(res):
                     if matched_this_node is node:
                         res.insert(i, matched_this_node)
                         break
@@ -148,8 +148,12 @@ class Not(Condition):
     def match(
         self, these_nodes: List["Tree"], this_name: Optional[str]
     ) -> Tuple[List["Tree"], Dict[str, list]]:
-        matched_nodes, backrefs_map = self.condition.match(these_nodes, this_name)
-        res = [this_node for this_node in these_nodes if this_node not in matched_nodes]
+        matched_nodes, _ = self.condition.match(these_nodes, this_name)
+        res = [
+            this_node
+            for this_node in these_nodes
+            if all(this_node is not matched_node for matched_node in matched_nodes)
+        ]
         return res, {}
 
 
