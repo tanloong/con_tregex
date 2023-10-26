@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generator, List, Optional, TYPE_CHECKING, Tuple
+from typing import Dict, Iterable, List, Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from tree import Tree
@@ -26,7 +26,7 @@ class ConditionOp(Condition):
         self.those_nodes = those_nodes
         self.that_name = that_name
 
-    def get_names(self) -> Generator[Optional[str], Any, None]:
+    def get_names(self) -> Iterable[Optional[str]]:
         yield self.that_name
 
     def match(
@@ -59,7 +59,7 @@ class And(Condition):
     def __init__(self, conditions):
         self.conditions = conditions
 
-    def get_names(self) -> Generator[Optional[str], Any, None]:
+    def get_names(self) -> Iterable[Optional[str]]:
         for condition in self.conditions:
             for name in condition.get_names():
                 yield name
@@ -98,7 +98,7 @@ class Or(Condition):
     def __init__(self, conditions):
         self.conditions = conditions
 
-    def get_names(self) -> Generator[Optional[str], Any, None]:
+    def get_names(self) -> Iterable[Optional[str]]:
         for condition in self.conditions:
             for name in condition.get_names():
                 yield name
@@ -141,7 +141,7 @@ class Not(Condition):
                     f' operator. Please remove the assignment to "{name}".'
                 )
 
-    def get_names(self) -> Generator[Optional[str], Any, None]:
+    def get_names(self) -> Iterable[Optional[str]]:
         for name in self.condition.get_names():
             yield name
 
@@ -161,7 +161,7 @@ class Opt(Condition):
     def __init__(self, condition):
         self.condition = condition
 
-    def get_names(self) -> Generator[Optional[str], Any, None]:
+    def get_names(self) -> Iterable[Optional[str]]:
         for name in self.condition.get_names():
             yield name
 
