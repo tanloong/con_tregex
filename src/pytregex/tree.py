@@ -98,7 +98,6 @@ class Tree:
     def is_leaf(self) -> bool:
         return not self.children
 
-    @property
     def num_children(self) -> int:
         return len(self.children)
 
@@ -110,14 +109,14 @@ class Tree:
 
         return Whether the node heads a unary rewrite
         """
-        return self.num_children == 1
+        return self.num_children() == 1
 
     @property
     def is_pre_terminal(self) -> bool:
         """
         A preterminal is defined to be a node with one child which is itself a leaf.
         """
-        return self.num_children == 1 and self.children[0].is_leaf
+        return self.num_children() == 1 and self.children[0].is_leaf
 
     @property
     def is_pre_pre_terminal(self) -> bool:
@@ -129,7 +128,7 @@ class Tree:
 
         return true if the node is a prepreterminal; false otherwise
         """
-        if self.num_children == 0:
+        if self.num_children() == 0:
             return False
         for child in self.children:
             if not child.is_pre_terminal:
@@ -536,7 +535,7 @@ class Tree:
         descendant_n = sum(ns)
         descendant_weight = max(weights)
 
-        if self.parent is None or self.parent.num_children == 1:
+        if self.parent is None or self.parent.num_children() == 1:
             # print(f"{self.label=}\t{descendant_n=}\t{descendant_weight=}")
             return descendant_n, descendant_weight
 

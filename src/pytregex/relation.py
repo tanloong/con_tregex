@@ -148,7 +148,7 @@ class RelationOp:
 
     @classmethod
     def unary_path_ancestor_of(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.is_leaf or t1.num_children > 1:
+        if t1.is_leaf or t1.num_children() > 1:
             return False
         only_child = t1.children[0]
         if only_child is t2:
@@ -240,13 +240,13 @@ class RelationOp:
         i = (
             t1.get_sister_index()
         )  # if t1 is not root, i won't be None, no need to check whether i is None
-        while i == (parent.num_children - 1) and parent.parent is not None:
+        while i == (parent.num_children() - 1) and parent.parent is not None:
             t1 = parent
             parent = parent.parent
             i = t1.get_sister_index()
 
         # ensure i >= 0 because Tree.get_sister_index() might return -1
-        if i >= 0 and (i + 1) < parent.num_children:
+        if i >= 0 and (i + 1) < parent.num_children():
             following_node = parent.children[i + 1]
         else:
             return False

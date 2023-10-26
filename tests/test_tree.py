@@ -96,7 +96,7 @@ class TestTree(BaseTmpl):
 
     def test_num_children(self):
         tree = next(Tree.fromstring(self.tree_string))
-        self.assertEqual(tree.num_children, len(tree.children))
+        self.assertEqual(tree.num_children(), len(tree.children))
 
     def test_sister_index(self):
         tree = Tree()  # label=None, children=[], parent=None
