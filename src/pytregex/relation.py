@@ -65,7 +65,7 @@ class RelationOp:
 
     @classmethod
     def has_rightmost_descendant(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.is_leaf:
+        if t1.is_leaf():
             return False
         last_child = t1.children[-1]
         return last_child is t2 or cls.has_rightmost_descendant(last_child, t2)
@@ -76,7 +76,7 @@ class RelationOp:
 
     @classmethod
     def has_leftmost_descendant(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.is_leaf:
+        if t1.is_leaf():
             return False
         first_child = t1.children[0]
         return first_child is t2 or cls.has_leftmost_descendant(first_child, t2)
@@ -148,7 +148,7 @@ class RelationOp:
 
     @classmethod
     def unary_path_ancestor_of(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.is_leaf or t1.num_children() > 1:
+        if t1.is_leaf() or t1.num_children() > 1:
             return False
         only_child = t1.children[0]
         if only_child is t2:
@@ -162,7 +162,7 @@ class RelationOp:
 
     @classmethod
     def heads(cls, t1: "Tree", t2: "Tree", hf: Optional["HeadFinder"] = None) -> bool:
-        if t2.is_leaf:
+        if t2.is_leaf():
             return False
         elif t2.is_pre_terminal:
             return t2.first_child is t1
@@ -213,7 +213,7 @@ class RelationOp:
 
     @classmethod
     def ancestor_of_leaf(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t1 is not t2 and t2.is_leaf and RelationOp.dominates(t1, t2)
+        return t1 is not t2 and t2.is_leaf() and RelationOp.dominates(t1, t2)
 
     @classmethod
     def unbroken_category_dominates(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
@@ -292,7 +292,7 @@ class RelationOp:
         if leaf_num == 0:
             raise ValueError("Error -- no such thing as zeroth leaf!")
 
-        if t1 is t2 or not t2.is_leaf:
+        if t1 is t2 or not t2.is_leaf():
             return False
 
         # this is kind of lazy if it somehow became a performance limitation, a

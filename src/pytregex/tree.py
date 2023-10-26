@@ -94,7 +94,6 @@ class Tree:
             return None
         return self.label.split("-")[0]
 
-    @property
     def is_leaf(self) -> bool:
         return not self.children
 
@@ -116,7 +115,7 @@ class Tree:
         """
         A preterminal is defined to be a node with one child which is itself a leaf.
         """
-        return self.num_children() == 1 and self.children[0].is_leaf
+        return self.num_children() == 1 and self.children[0].is_leaf()
 
     @property
     def is_pre_pre_terminal(self) -> bool:
@@ -146,7 +145,7 @@ class Tree:
         return True if the node is phrasal; False otherwise
         """
         kids = self.children
-        return not (kids is None or len(kids) == 0 or (len(kids) == 1 and kids[0].is_leaf))
+        return not (kids is None or len(kids) == 0 or (len(kids) == 1 and kids[0].is_leaf()))
 
     @property
     def is_binary(self) -> bool:
@@ -155,7 +154,7 @@ class Tree:
         happens if the tree and all of its descendants are either nodes with
         exactly two children, or are preterminals or leaves.
         """
-        if self.is_leaf or self.is_pre_terminal:
+        if self.is_leaf() or self.is_pre_terminal:
             return True
         kids = self.children
         if len(kids) != 2:
@@ -193,7 +192,7 @@ class Tree:
         is 1; the height of a tree containing only leaves is 2; and the height
         of any other tree is one plus the maximum of its children's heights.
         """
-        if self.is_leaf:
+        if self.is_leaf():
             return 1
         max_height = 0
         for child in self.children:
@@ -208,7 +207,7 @@ class Tree:
         param parent  The parent of this tree
         return The head tree leaf if any, else null
         """
-        if self.is_leaf:
+        if self.is_leaf():
             return self
 
         head: Optional["Tree"] = hf.determineHead(self)
@@ -226,7 +225,7 @@ class Tree:
         return a List of the data in the tree's leaves.
         """
         leaves = []
-        if self.is_leaf:
+        if self.is_leaf():
             leaves.append(self.label)
         else:
             for child in self.children:
@@ -265,7 +264,7 @@ class Tree:
             nonlocal i
             if t is t1:
                 return True
-            elif t1.is_leaf:
+            elif t1.is_leaf():
                 j = len(t1.yield_())
                 i += j
                 return False
@@ -291,7 +290,7 @@ class Tree:
             nonlocal i
             if t is t1:
                 return True
-            elif t1.is_leaf:
+            elif t1.is_leaf():
                 j = len(t1.yield_())
                 i -= j
                 return False
@@ -510,7 +509,7 @@ class Tree:
         return a list of the leaves.
         """
         leaves = []
-        if self.is_leaf:
+        if self.is_leaf():
             leaves.append(self)
         else:
             for kid in self.children:
@@ -527,7 +526,7 @@ class Tree:
         """
         Return total number of edges across all nodes
         """
-        if self.is_leaf:
+        if self.is_leaf():
             # print(f"{self.label=}\t1\t1")
             return 1, 1
 
