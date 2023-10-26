@@ -143,5 +143,5 @@ class TestTree(BaseTmpl):
     def test_root(self):
         child = self.tree[0]
         grandchild = self.tree[0, 0]
-        self.assertIs(child.root, self.tree)
-        self.assertIs(grandchild.root, self.tree)
+        self.assertIs(child.get_root(), self.tree)
+        self.assertIs(grandchild.get_root(), self.tree)

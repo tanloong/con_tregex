@@ -276,7 +276,7 @@ class Tree:
                         return True
                 return False
 
-        if left_edge_helper(self, self.root):
+        if left_edge_helper(self, self.get_root()):
             return i
         else:
             raise RuntimeError("Tree is not a descendant of root.")
@@ -286,7 +286,7 @@ class Tree:
         """
         note: return 1 for the leftmost node
         """
-        i = len(self.root.yield_())
+        i = len(self.get_root().yield_())
 
         def right_edge_helper(t: "Tree", t1: "Tree") -> bool:
             nonlocal i
@@ -302,7 +302,7 @@ class Tree:
                         return True
                 return False
 
-        if right_edge_helper(self, self.root):
+        if right_edge_helper(self, self.get_root()):
             return i
         else:
             raise RuntimeError("Tree is not a descendant of root.")
@@ -406,8 +406,7 @@ class Tree:
             root.parent = None
         return root
 
-    @property
-    def root(self) -> "Tree":
+    def get_root(self) -> "Tree":
         root_ = self
         while root_.parent is not None:
             root_ = root_.parent
@@ -451,7 +450,7 @@ class Tree:
         """
         path_start = self.path
         path_end = other.path
-        if self.root is not other.root:
+        if self.get_root() is not other.get_root():
             raise ValueError("start and end are not part of the same tree.")
 
         # common
@@ -460,7 +459,7 @@ class Tree:
             for node_start, node_end in zip(path_start, path_end)
             if node_start is node_end
         )
-        assert common[0] is self.root
+        assert common[0] is self.get_root()
         len_common = len(common)
 
         # upwards
