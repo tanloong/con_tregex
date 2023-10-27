@@ -1,7 +1,7 @@
 from collections import namedtuple
 import logging
 import re
-from typing import Dict, Iterable, Iterator, List, Never, Optional
+from typing import Dict, Generator, Iterator, List, Never, Optional
 
 from ply import lex, yacc
 
@@ -93,7 +93,7 @@ class TregexMatcher:
     @classmethod
     def match_node_descriptions(
         cls, descriptions: "NodeDescriptions", trees: List[Tree]
-    ) -> Iterable[Tree]:
+    ) -> Generator[Tree, None, None]:
         is_negated = descriptions.is_negated
         use_basic_cat = descriptions.use_basic_cat
 

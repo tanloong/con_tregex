@@ -2,7 +2,7 @@
 
 from collections import deque
 import re
-from typing import Deque, List, Optional, TYPE_CHECKING, Tuple, Iterable
+from typing import Deque, Generator, List, Optional, TYPE_CHECKING, Tuple
 
 from peekable import peekable
 
@@ -327,7 +327,7 @@ class Tree:
         self.children.append(node)
 
     @classmethod
-    def fromstring(cls, string: str, brackets: str = "()") -> Iterable["Tree"]:
+    def fromstring(cls, string: str, brackets: str = "()") -> Generator["Tree", None, None]:
         # translated from CoreNLP's PennTreeReader
         # https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/PennTreeReader.java#L144
 
@@ -410,7 +410,7 @@ class Tree:
             root_ = root_.parent
         return root_
 
-    def iter_upto_root(self) -> Iterable["Tree"]:
+    def iter_upto_root(self) -> Generator["Tree", None, None]:
         """
         iterate up the tree from the current node to the root node.
 
@@ -493,7 +493,7 @@ class Tree:
     def tostring(self) -> str:
         return repr(self)
 
-    def preorder_iter(self) -> Iterable["Tree"]:
+    def preorder_iter(self) -> Generator["Tree", None, None]:
         if self:
             yield self
             for child in self.children:
