@@ -94,9 +94,9 @@ class TestTree(BaseTmpl):
         tree = next(Tree.fromstring(self.tree_string))
         self.assertEqual(len(tree), len(tree.children))
 
-    def test_num_children(self):
+    def test_numChildren(self):
         tree = next(Tree.fromstring(self.tree_string))
-        self.assertEqual(tree.num_children(), len(tree.children))
+        self.assertEqual(tree.numChildren(), len(tree.children))
 
     def test_sister_index(self):
         tree = Tree()  # label=None, children=[], parent=None
@@ -109,12 +109,12 @@ class TestTree(BaseTmpl):
         tree_VP = tree_S.children.pop()
         self.assertEqual(-1, tree_VP.get_sister_index())
 
-    def test_is_leaf(self):
+    def test_isLeaf(self):
         tree = Tree()
-        self.assertTrue(tree.is_leaf())
+        self.assertTrue(tree.isLeaf())
 
         tree.children.append(Tree())
-        self.assertFalse(tree.is_leaf())
+        self.assertFalse(tree.isLeaf())
 
     def test_left_sisters(self):
         self.assertIsNone(self.tree[0].left_sisters, None)
@@ -143,5 +143,5 @@ class TestTree(BaseTmpl):
     def test_root(self):
         child = self.tree[0]
         grandchild = self.tree[0, 0]
-        self.assertIs(child.get_root(), self.tree)
-        self.assertIs(grandchild.get_root(), self.tree)
+        self.assertIs(child.getRoot(), self.tree)
+        self.assertIs(grandchild.getRoot(), self.tree)

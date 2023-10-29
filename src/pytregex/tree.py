@@ -1,5 +1,7 @@
 # translated from [CoreNLP](https://github.com/stanfordnlp/CoreNLP/blob/139893242878ecacde79b2ba1d0102b855526610/src/edu/stanford/nlp/trees/Tree.java)
 
+# TODO use camel case to match java tregex's convention
+
 from collections import deque
 import re
 from typing import Deque, Generator, List, Optional, TYPE_CHECKING, Tuple
@@ -94,10 +96,10 @@ class Tree:
             return None
         return self.label.split("-")[0]
 
-    def is_leaf(self) -> bool:
+    def isLeaf(self) -> bool:
         return not self.children
 
-    def num_children(self) -> int:
+    def numChildren(self) -> int:
         return len(self.children)
 
     @property
@@ -108,14 +110,14 @@ class Tree:
 
         return Whether the node heads a unary rewrite
         """
-        return self.num_children() == 1
+        return self.numChildren() == 1
 
     @property
     def is_pre_terminal(self) -> bool:
         """
         A preterminal is defined to be a node with one child which is itself a leaf.
         """
-        return self.num_children() == 1 and self.children[0].is_leaf()
+        return self.numChildren() == 1 and self.children[0].isLeaf()
 
     @property
     def is_pre_pre_terminal(self) -> bool:
@@ -127,7 +129,7 @@ class Tree:
 
         return true if the node is a prepreterminal; false otherwise
         """
-        if self.num_children() == 0:
+        if self.numChildren() == 0:
             return False
         for child in self.children:
             if not child.is_pre_terminal:
@@ -145,7 +147,7 @@ class Tree:
         return True if the node is phrasal; False otherwise
         """
         kids = self.children
-        return not (kids is None or len(kids) == 0 or (len(kids) == 1 and kids[0].is_leaf()))
+        return not (kids is None or len(kids) == 0 or (len(kids) == 1 and kids[0].isLeaf()))
 
     @property
     def is_binary(self) -> bool:
@@ -154,17 +156,16 @@ class Tree:
         happens if the tree and all of its descendants are either nodes with
         exactly two children, or are preterminals or leaves.
         """
-        if self.is_leaf() or self.is_pre_terminal:
+        if self.isLeaf() or self.is_pre_terminal:
             return True
         kids = self.children
         if len(kids) != 2:
             return False
         return kids[0].is_binary and kids[1].is_binary
 
-    @property
-    def first_child(self) -> Optional["Tree"]:
+    def firstChild(self) -> Optional["Tree"]:
         """
-        Returns the first child of a tree, or null if none.
+        Returns the first child of a tree, or None if none.
 
         return The first child
         """
@@ -173,10 +174,9 @@ class Tree:
             return None
         return kids[0]
 
-    @property
-    def last_child(self) -> Optional["Tree"]:
+    def lastChild(self) -> Optional["Tree"]:
         """
-        Returns the last child of a tree, or null if none.
+        Returns the last child of a tree, or None if none.
 
         return The last child
         """
@@ -192,7 +192,7 @@ class Tree:
         is 1; the height of a tree containing only leaves is 2; and the height
         of any other tree is one plus the maximum of its children's heights.
         """
-        if self.is_leaf():
+        if self.isLeaf():
             return 1
         max_height = 0
         for child in self.children:
@@ -207,7 +207,7 @@ class Tree:
         param parent  The parent of this tree
         return The head tree leaf if any, else null
         """
-        if self.is_leaf():
+        if self.isLeaf():
             return self
 
         head: Optional["Tree"] = hf.determineHead(self)
@@ -225,7 +225,7 @@ class Tree:
         return a List of the data in the tree's leaves.
         """
         leaves = []
-        if self.is_leaf():
+        if self.isLeaf():
             leaves.append(self.label)
         else:
             for child in self.children:
@@ -247,14 +247,13 @@ class Tree:
         """
         tagged_leaves = []
         if self.is_pre_terminal:
-            tagged_leaves.append(f"{self.first_child.label}{divider}{self.label}")  # type:ignore
+            tagged_leaves.append(f"{self.firstChild().label}{divider}{self.label}")  # type:ignore
         else:
             for child in self.children:
                 tagged_leaves.extend(child.tagged_yield_())
         return tagged_leaves
 
-    @property
-    def left_edge(self) -> int:
+    def leftEdge(self) -> int:
         """
         note: return 0 for the leftmost node
         """
@@ -264,7 +263,7 @@ class Tree:
             nonlocal i
             if t is t1:
                 return True
-            elif t1.is_leaf():
+            elif t1.isLeaf():
                 j = len(t1.yield_())
                 i += j
                 return False
@@ -274,23 +273,22 @@ class Tree:
                         return True
                 return False
 
-        if left_edge_helper(self, self.get_root()):
+        if left_edge_helper(self, self.getRoot()):
             return i
         else:
             raise RuntimeError("Tree is not a descendant of root.")
 
-    @property
-    def right_edge(self) -> int:
+    def rightEdge(self) -> int:
         """
         note: return 1 for the leftmost node
         """
-        i = len(self.get_root().yield_())
+        i = len(self.getRoot().yield_())
 
         def right_edge_helper(t: "Tree", t1: "Tree") -> bool:
             nonlocal i
             if t is t1:
                 return True
-            elif t1.is_leaf():
+            elif t1.isLeaf():
                 j = len(t1.yield_())
                 i -= j
                 return False
@@ -300,7 +298,7 @@ class Tree:
                         return True
                 return False
 
-        if right_edge_helper(self, self.get_root()):
+        if right_edge_helper(self, self.getRoot()):
             return i
         else:
             raise RuntimeError("Tree is not a descendant of root.")
@@ -328,6 +326,7 @@ class Tree:
 
     @classmethod
     def fromstring(cls, string: str, brackets: str = "()") -> Generator["Tree", None, None]:
+        # TODO need more logging mesg to indicate whether "a b c d" or "(a b c d)" is parsed correctly
         # translated from CoreNLP's PennTreeReader
         # https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/PennTreeReader.java#L144
 
@@ -404,7 +403,7 @@ class Tree:
             root.parent = None
         return root
 
-    def get_root(self) -> "Tree":
+    def getRoot(self) -> "Tree":
         root_ = self
         while root_.parent is not None:
             root_ = root_.parent
@@ -448,7 +447,7 @@ class Tree:
         """
         path_start = self.path
         path_end = other.path
-        if self.get_root() is not other.get_root():
+        if self.getRoot() is not other.getRoot():
             raise ValueError("start and end are not part of the same tree.")
 
         # common
@@ -457,7 +456,7 @@ class Tree:
             for node_start, node_end in zip(path_start, path_end)
             if node_start is node_end
         )
-        assert common[0] is self.get_root()
+        assert common[0] is self.getRoot()
         len_common = len(common)
 
         # upwards
@@ -500,7 +499,7 @@ class Tree:
                 for descendant in child.preorder_iter():
                     yield descendant
 
-    def get_leaves(self) -> List["Tree"]:
+    def getLeaves(self) -> List["Tree"]:
         """
         Gets the leaves of the tree.  All leaves nodes are returned as a list
         ordered by the natural left to right order of the tree.  None values,
@@ -509,24 +508,24 @@ class Tree:
         return a list of the leaves.
         """
         leaves = []
-        if self.is_leaf():
+        if self.isLeaf():
             leaves.append(self)
         else:
             for kid in self.children:
-                leaves.extend(kid.get_leaves())
+                leaves.extend(kid.getLeaves())
         return leaves
 
     def span_string(self) -> str:
         """
         Return String of leaves spanned by this tree
         """
-        return " ".join(leaf.tostring() for leaf in self.get_leaves() if leaf is not None)
+        return " ".join(leaf.tostring() for leaf in self.getLeaves() if leaf is not None)
 
     def get_num_edges(self):
         """
         Return total number of edges across all nodes
         """
-        if self.is_leaf():
+        if self.isLeaf():
             # print(f"{self.label=}\t1\t1")
             return 1, 1
 
@@ -534,7 +533,7 @@ class Tree:
         descendant_n = sum(ns)
         descendant_weight = max(weights)
 
-        if self.parent is None or self.parent.num_children() == 1:
+        if self.parent is None or self.parent.numChildren() == 1:
             # print(f"{self.label=}\t{descendant_n=}\t{descendant_weight=}")
             return descendant_n, descendant_weight
 

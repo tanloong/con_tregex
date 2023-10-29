@@ -65,7 +65,7 @@ class RelationOp:
 
     @classmethod
     def has_rightmost_descendant(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.is_leaf():
+        if t1.isLeaf():
             return False
         last_child = t1.children[-1]
         return last_child is t2 or cls.has_rightmost_descendant(last_child, t2)
@@ -76,7 +76,7 @@ class RelationOp:
 
     @classmethod
     def has_leftmost_descendant(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.is_leaf():
+        if t1.isLeaf():
             return False
         first_child = t1.children[0]
         return first_child is t2 or cls.has_leftmost_descendant(first_child, t2)
@@ -148,7 +148,7 @@ class RelationOp:
 
     @classmethod
     def unary_path_ancestor_of(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.is_leaf() or t1.num_children() > 1:
+        if t1.isLeaf() or t1.numChildren() > 1:
             return False
         only_child = t1.children[0]
         if only_child is t2:
@@ -162,10 +162,10 @@ class RelationOp:
 
     @classmethod
     def heads(cls, t1: "Tree", t2: "Tree", hf: Optional["HeadFinder"] = None) -> bool:
-        if t2.is_leaf():
+        if t2.isLeaf():
             return False
         elif t2.is_pre_terminal:
-            return t2.first_child is t1
+            return t2.firstChild() is t1
         else:
             if hf is None:
                 hf = RelationOp.hf
@@ -197,23 +197,23 @@ class RelationOp:
 
     @classmethod
     def precedes(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t1.right_edge <= t2.left_edge
+        return t1.rightEdge() <= t2.leftEdge()
 
     @classmethod
     def immediately_precedes(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t1.right_edge == t2.left_edge
+        return t1.rightEdge() == t2.leftEdge()
 
     @classmethod
     def follows(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t2.right_edge <= t1.left_edge
+        return t2.rightEdge() <= t1.leftEdge()
 
     @classmethod
     def immediately_follows(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t2.right_edge == t1.left_edge
+        return t2.rightEdge() == t1.leftEdge()
 
     @classmethod
     def ancestor_of_leaf(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t1 is not t2 and t2.is_leaf() and RelationOp.dominates(t1, t2)
+        return t1 is not t2 and t2.isLeaf() and RelationOp.dominates(t1, t2)
 
     @classmethod
     def unbroken_category_dominates(cls, t1: "Tree", t2: "Tree", rel_arg: List["Tree"]) -> bool:
@@ -240,13 +240,13 @@ class RelationOp:
         i = (
             t1.get_sister_index()
         )  # if t1 is not root, i won't be None, no need to check whether i is None
-        while i == (parent.num_children() - 1) and parent.parent is not None:
+        while i == (parent.numChildren() - 1) and parent.parent is not None:
             t1 = parent
             parent = parent.parent
             i = t1.get_sister_index()
 
         # ensure i >= 0 because Tree.get_sister_index() might return -1
-        if i >= 0 and (i + 1) < parent.num_children():
+        if i >= 0 and (i + 1) < parent.numChildren():
             following_node = parent.children[i + 1]
         else:
             return False
@@ -292,12 +292,12 @@ class RelationOp:
         if leaf_num == 0:
             raise ValueError("Error -- no such thing as zeroth leaf!")
 
-        if t1 is t2 or not t2.is_leaf():
+        if t1 is t2 or not t2.isLeaf():
             return False
 
         # this is kind of lazy if it somehow became a performance limitation, a
         # recursive search would be faster
-        leaves = t1.get_leaves()
+        leaves = t1.getLeaves()
         if len(leaves) < abs(leaf_num):
             return False
         if leaf_num > 0:
