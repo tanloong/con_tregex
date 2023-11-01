@@ -25,11 +25,11 @@ class Relation:
     symbol: Optional[str] = None
 
     @classmethod
-    def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", arg=None) -> bool:
         raise NotImplementedError
 
     @classmethod
-    def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
+    def searchNodeIterator(cls, t: "Tree", arg=None) -> Generator["Tree", None, None]:
         raise NotImplementedError
 
 
@@ -167,9 +167,11 @@ class RIGHTMOST_DESCENDANT_OF(Relation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
+        current = t
         parent_ = t.parent
-        while parent_ is not None and parent_.lastChild() is t:
+        while parent_ is not None and parent_.lastChild() is current:
             yield parent_
+            current = parent_
             parent_ = parent_.parent
 
 
@@ -196,9 +198,11 @@ class LEFTMOST_DESCENDANT_OF(Relation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
+        current = t
         parent_ = t.parent
-        while parent_ is not None and parent_.firstChild() is t:
+        while parent_ is not None and parent_.firstChild() is current:
             yield parent_
+            current = parent_
             parent_ = parent_.parent
 
 
@@ -265,7 +269,7 @@ class IMMEDIATE_LEFT_SISTER_OF(Relation):
             for i, child in enumerate(parent_.children):
                 if child is t:
                     break
-            if i + 1 < len(parent_.numChildren()):
+            if i + 1 < parent_.numChildren():
                 yield parent_.children[i + 1]
 
 
@@ -345,13 +349,9 @@ class PARENT_EQUALS(Relation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        usedParent: bool = False
-        if not usedParent:
-            yield t
-            usedParent = True
-        else:
-            for kid in t.children:
-                yield kid
+        yield t
+        for kid in t.children:
+            yield kid
 
 
 class UNARY_PATH_ANCESTOR_OF(Relation):
@@ -806,7 +806,7 @@ class ANCESTOR_OF_ITH_LEAF(Relation):
 
 
 class AbstractRelationData(ABC):
-    def __init__(self, string_repr: str, op: Callable):
+    def __init__(self, string_repr: str, op: Relation):
         self.op = op
         self.string_repr = string_repr
 
@@ -817,53 +817,61 @@ class AbstractRelationData(ABC):
         self.string_repr = s
 
     @abstractmethod
-    def search_func(self, this_node: "Tree"):
+    def searchNodeIterator(self, this_node: "Tree"):
         raise NotImplementedError()
 
 
 class RelationData(AbstractRelationData):
-    def __init__(self, string_repr: str, op: Callable) -> None:
+    def __init__(self, string_repr: str, op: Relation) -> None:
         super().__init__(string_repr, op)
+    
+    def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
+        return self.op.searchNodeIterator(this_node)
 
-    def search_func(self, this_node: "Tree") -> bool:
-        return self.op(this_node)
-
+    def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
+        return self.op.satisfies(this_node, that_node)
 
 class RelationWithStrArgData(AbstractRelationData):
     def __init__(
         self,
         string_repr: str,
-        op: Callable,
+        op: Relation,
         *,
         arg: NodeDescriptions,
     ) -> None:
         super().__init__(string_repr, op)
         self.arg = arg
 
-    def search_func(self, this_node: "Tree") -> bool:
-        return self.op(this_node, self.arg)
+    def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
+        return self.op.searchNodeIterator(this_node, self.arg)
+
+    def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
+        return self.op.satisfies(this_node, that_node, self.arg)
 
 
 class RelationWithNumArgData(AbstractRelationData):
     def __init__(
         self,
         string_repr: str,
-        op: Callable,
+        op: Relation,
         *,
         arg: int,
     ) -> None:
         super().__init__(string_repr, op)
         self.arg = arg
 
-    def search_func(self, this_node: "Tree") -> bool:
-        return self.op(this_node, self.arg)
+    def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
+        return self.op.searchNodeIterator(this_node, self.arg)
+
+    def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
+        return self.op.satisfies(this_node, that_node, self.arg)
 
 
 class MultiRelationData(RelationWithNumArgData):
     def __init__(
         self,
         string_repr: str,
-        op: Callable,
+        op: Relation,
         *,
         arg: int,
     ) -> None:
