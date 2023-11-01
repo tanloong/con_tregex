@@ -4,6 +4,9 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Generator, List, Optional, TYPE_CHECKING, Tuple
 
+from node_descriptions import NodeDescriptions
+from peekable import peekable
+
 if TYPE_CHECKING:
     from tree import Tree
     from relation import AbstractRelationData
@@ -19,15 +22,23 @@ class ConditionOp(Condition):
     def __init__(
         self,
         relation_data: "AbstractRelationData",
-        those_nodes: List["Tree"],
+        that_descs: NodeDescriptions,
         that_name: Optional[str],
     ) -> None:
-        self.condition_func = relation_data.condition_func
-        self.those_nodes = those_nodes
+        self.search_func = relation_data.search_func
+        self.that_descs = that_descs
         self.that_name = that_name
 
     def get_names(self) -> Generator[Optional[str], None, None]:
         yield self.that_name
+
+    def is_peekable_empty(self, p: peekable):
+        try:
+            p.peek()
+        except StopIteration:
+            return True
+        else:
+            return False
 
     def match(
         self, these_nodes: List["Tree"], this_name: Optional[str]
@@ -36,9 +47,15 @@ class ConditionOp(Condition):
 
         matched_pairs = []
         for this_node in these_nodes:
-            for that_node in self.those_nodes:
-                if self.condition_func(this_node, that_node):
-                    matched_pairs.append((this_node, that_node))
+            search_g = self.search_func(this_node)
+            search_p = peekable(search_g)
+            if self.is_peekable_empty(search_p):
+                continue
+            matched_pairs.extend(
+                (this_node, that_node)
+                for that_node in search_p
+                if self.that_descs.satisfy(that_node)
+            )
 
         res = [pair[0] for pair in matched_pairs]
         if this_name is not None:

@@ -1,212 +1,87 @@
-from collections import namedtuple
 import logging
 import re
-from typing import Dict, Generator, Iterator, List, Never, Optional
+from typing import Dict, List, Never
 
 from ply import lex, yacc
 
 from condition import And, ConditionOp, Not, Opt, Or
-from relation import (
-    MultiRelationData,
-    RelationData,
-    RelationOp,
-    RelationWithNumArgData,
-    RelationWithStrArgData,
+from node_descriptions import (
+    NODE_ANY,
+    NODE_ID,
+    NODE_REGEX,
+    NODE_ROOT,
+    NamedNodes,
+    NodeDescription,
+    NodeDescriptions,
 )
+from relation import *
 from tree import Tree
-
-
-class NamedNodes:
-    def __init__(
-        self, name: Optional[str], nodes: Optional[List[Tree]], string_repr: str = ""
-    ) -> None:
-        self.name = name
-        self.nodes = nodes
-        self.string_repr = string_repr
-
-    def set_name(self, new_name: Optional[str]) -> None:
-        self.name = new_name
-
-    def set_nodes(self, new_nodes: List[Tree]) -> None:
-        self.nodes = new_nodes
-
-
-class TregexMatcher:
-    @classmethod
-    def match_id(
-        cls, node: Tree, id: str, *, is_negated: bool = False, use_basic_cat: bool = False
-    ) -> bool:
-        attr = "basic_category" if use_basic_cat else "label"
-        value = getattr(node, attr)
-
-        if value is None:
-            return is_negated
-        else:
-            return (value == id) != is_negated
-
-    @classmethod
-    def match_regex(
-        cls, node: Tree, regex: str, *, is_negated: bool = False, use_basic_cat: bool = False
-    ) -> bool:
-        attr = "basic_category" if use_basic_cat else "label"
-        value = getattr(node, attr)
-
-        if value is None:
-            return is_negated
-        else:
-            # convert regex to standard python regex
-            flag = ""
-            while regex[-1] != "/":
-                flag += regex[-1]
-                regex = regex[:-1]
-
-            regex = regex[1:-1]
-            if flag:
-                regex = "(?" + "".join(set(flag)) + ")" + regex
-
-            return (re.search(regex, value) is not None) != is_negated
-
-    @classmethod
-    def match_blank(
-        cls,
-        node: Tree,
-        value: str = "",
-        *,
-        is_negated: bool = False,
-        use_basic_cat: bool = False,
-    ) -> bool:
-        return not is_negated
-
-    @classmethod
-    def match_root(
-        cls,
-        node: Tree,
-        value: str = "",
-        *,
-        is_negated: bool = False,
-        use_basic_cat: bool = False,
-    ) -> bool:
-        if node.parent is None:
-            return True
-        return False
-
-    @classmethod
-    def match_node_descriptions(
-        cls, descriptions: "NodeDescriptions", trees: List[Tree]
-    ) -> Generator[Tree, None, None]:
-        is_negated = descriptions.is_negated
-        use_basic_cat = descriptions.use_basic_cat
-
-        for tree in trees:
-            for node in tree.preorder_iter():
-                for desc in descriptions:
-                    if desc.condition_func(
-                        node, desc.value, is_negated=is_negated, use_basic_cat=use_basic_cat
-                    ):
-                        yield node
-                        break
-
-
-NodeDescription = namedtuple("NodeDescription", ("condition_func", "value"))
-
-
-class NodeDescriptions:
-    def __init__(
-        self,
-        node_descriptions: List[NodeDescription],
-        *,
-        is_negated: bool = False,
-        use_basic_cat: bool = False,
-    ) -> None:
-        self.descriptions = node_descriptions
-        self.is_negated = is_negated
-        self.use_basic_cat = use_basic_cat
-
-        self.string_repr = "".join(desc.value for desc in self.descriptions)
-
-    def __iter__(self) -> Iterator[NodeDescription]:
-        return iter(self.descriptions)
-
-    def __repr__(self) -> str:
-        return self.string_repr
-
-    def set_string_repr(self, s: str):
-        self.string_repr = s
-
-    def add_description(self, other_description: NodeDescription) -> None:
-        self.descriptions.append(other_description)
-
-    def toggle_negated(self) -> None:
-        self.is_negated = not self.is_negated
-
-    def toggle_use_basic_cat(self) -> None:
-        self.use_basic_cat = not self.use_basic_cat
 
 
 class TregexPattern:
     RELATION_MAP = {
-        "<": RelationOp.parent_of,
-        ">": RelationOp.child_of,
-        "<<": RelationOp.dominates,
-        ">>": RelationOp.dominated_by,
-        ">:": RelationOp.only_child_of,
-        "<:": RelationOp.has_only_child,
-        ">`": RelationOp.last_child_of_parent,
-        ">-": RelationOp.last_child_of_parent,
-        "<`": RelationOp.parent_of_last_child,
-        "<-": RelationOp.parent_of_last_child,
-        ">,": RelationOp.leftmost_child_of,
-        "<,": RelationOp.has_leftmost_child,
-        "<<`": RelationOp.has_rightmost_descendant,
-        "<<-": RelationOp.has_rightmost_descendant,
-        ">>`": RelationOp.rightmost_descendant_of,
-        ">>-": RelationOp.rightmost_descendant_of,
-        ">>,": RelationOp.leftmost_descendant_of,
-        "<<,": RelationOp.has_leftmost_descendant,
-        "$..": RelationOp.left_sister_of,
-        "$++": RelationOp.left_sister_of,
-        "$--": RelationOp.right_sister_of,
-        "$,,": RelationOp.right_sister_of,
-        "$.": RelationOp.immediate_left_sister_of,
-        "$+": RelationOp.immediate_left_sister_of,
-        "$-": RelationOp.immediate_right_sister_of,
-        "$,": RelationOp.immediate_right_sister_of,
-        "$": RelationOp.sister_of,
-        "==": RelationOp.equals,
-        "<=": RelationOp.parent_equals,
-        "<<:": RelationOp.unary_path_ancestor_of,
-        ">>:": RelationOp.unary_path_descedant_of,
-        ":": RelationOp.pattern_splitter,
-        ">#": RelationOp.immediately_heads,
-        "<#": RelationOp.immediately_headed_by,
-        ">>#": RelationOp.heads,
-        "<<#": RelationOp.headed_by,
-        "..": RelationOp.precedes,
-        ",,": RelationOp.follows,
-        ".": RelationOp.immediately_precedes,
-        ",": RelationOp.immediately_follows,
-        "<<<": RelationOp.ancestor_of_leaf,
-        "<<<-": RelationOp.ancestor_of_leaf,
+        "<": PARENT_OF,
+        ">": CHILD_OF,
+        "<<": DOMINATES,
+        ">>": DOMINATED_BY,
+        ">:": ONLY_CHILD_OF,
+        "<:": HAS_ONLY_CHILD,
+        ">`": LAST_CHILD_OF_PARENT,
+        ">-": LAST_CHILD_OF_PARENT,
+        "<`": PARENT_OF_LAST_CHILD,
+        "<-": PARENT_OF_LAST_CHILD,
+        ">,": LEFTMOST_CHILD_OF,
+        "<,": HAS_LEFTMOST_CHILD,
+        "<<`": HAS_RIGHTMOST_DESCENDANT,
+        "<<-": HAS_RIGHTMOST_DESCENDANT,
+        ">>`": RIGHTMOST_DESCENDANT_OF,
+        ">>-": RIGHTMOST_DESCENDANT_OF,
+        ">>,": LEFTMOST_DESCENDANT_OF,
+        "<<,": HAS_LEFTMOST_DESCENDANT,
+        "$..": LEFT_SISTER_OF,
+        "$++": LEFT_SISTER_OF,
+        "$--": RIGHT_SISTER_OF,
+        "$,,": RIGHT_SISTER_OF,
+        "$.": IMMEDIATE_LEFT_SISTER_OF,
+        "$+": IMMEDIATE_LEFT_SISTER_OF,
+        "$-": IMMEDIATE_RIGHT_SISTER_OF,
+        "$,": IMMEDIATE_RIGHT_SISTER_OF,
+        "$": SISTER_OF,
+        "==": EQUALS,
+        "<=": PARENT_EQUALS,
+        "<<:": UNARY_PATH_ANCESTOR_OF,
+        ">>:": UNARY_PATH_DESCEDANT_OF,
+        ":": PATTERN_SPLITTER,
+        ">#": IMMEDIATELY_HEADS,
+        "<#": IMMEDIATELY_HEADED_BY,
+        ">>#": HEADS,
+        "<<#": HEADED_BY,
+        "..": PRECEDES,
+        ",,": FOLLOWS,
+        ".": IMMEDIATELY_PRECEDES,
+        ",": IMMEDIATELY_FOLLOWS,
+        "<<<": ANCESTOR_OF_LEAF,
+        "<<<-": ANCESTOR_OF_LEAF,
     }
 
     REL_W_STR_ARG_MAP = {
-        "<+": RelationOp.unbroken_category_dominates,
-        ">+": RelationOp.unbroken_category_is_dominated_by,
-        ".+": RelationOp.unbroken_category_precedes,
-        ",+": RelationOp.unbroken_category_follows,
+        "<+": UNBROKEN_CATEGORY_DOMINATES,
+        ">+": UNBROKEN_CATEGORY_IS_DOMINATED_BY,
+        ".+": UNBROKEN_CATEGORY_PRECEDES,
+        ",+": UNBROKEN_CATEGORY_FOLLOWS,
     }
 
     REL_W_NUM_ARG_MAP = {
-        ">": RelationOp.ith_child_of,
-        ">-": RelationOp.ith_child_of,
-        "<": RelationOp.has_ith_child,
-        "<-": RelationOp.has_ith_child,
-        "<<<": RelationOp.ancestor_of_ith_leaf,
-        "<<<-": RelationOp.ancestor_of_ith_leaf,
+        ">": ITH_CHILD_OF,
+        ">-": ITH_CHILD_OF,
+        "<": HAS_ITH_CHILD,
+        "<-": HAS_ITH_CHILD,
+        "<<<": ANCESTOR_OF_ITH_LEAF,
+        "<<<-": ANCESTOR_OF_ITH_LEAF,
     }
 
     MULTI_RELATION_MAP = {
-        "<...": RelationOp.has_ith_child,
+        "<...": HAS_ITH_CHILD,
     }
 
     tokens = [
@@ -306,28 +181,28 @@ class TregexPattern:
             node_description : ID
             """
             # logging.debug("following rule: node_description -> ID")
-            p[0] = NodeDescription(TregexMatcher.match_id, p[1])
+            p[0] = NodeDescription(NODE_ID.satisfy, p[1])
 
         def p_REGEX(p):
             """
             node_description : REGEX
             """
             # logging.debug("following rule: node_description -> REGEX")
-            p[0] = NodeDescription(TregexMatcher.match_regex, p[1])
+            p[0] = NodeDescription(NODE_REGEX.satisfy, p[1])
 
         def p_BLANK(p):
             """
             node_description : BLANK
             """
             # logging.debug("following rule: node_description -> BLANK")
-            p[0] = NodeDescription(TregexMatcher.match_blank, p[1])
+            p[0] = NodeDescription(NODE_ANY.satisfy, p[1])
 
         def p_ROOT(p):
             """
             node_description : ROOT
             """
             # logging.debug("following rule: node_description -> ROOT")
-            p[0] = NodeDescription(TregexMatcher.match_root, p[1])
+            p[0] = NodeDescription(NODE_ROOT.satisfy, p[1])
 
         def p_not_node_descriptions(p):
             """
@@ -370,7 +245,7 @@ class TregexPattern:
             """
             named_nodes : node_descriptions
             """
-            nodes = list(TregexMatcher.match_node_descriptions(p[1], trees))
+            nodes = [node for tree in trees for node in p[1].searchNodeIterator(tree)]
             string_repr = p[1].string_repr
             logging.debug(f"following rule: named_nodes -> {string_repr}")
 
@@ -428,7 +303,7 @@ class TregexPattern:
             """
             # logging.debug("following rule: relation_data -> RELATION")
             string_repr = p[1]
-            p[0] = RelationData(string_repr, self.RELATION_MAP[string_repr])
+            p[0] = RelationData(string_repr, self.RELATION_MAP[string_repr].searchNodeIterator)
 
         # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_named_nodes_rparen(p):
