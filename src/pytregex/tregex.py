@@ -181,28 +181,28 @@ class TregexPattern:
             node_description : ID
             """
             # logging.debug("following rule: node_description -> ID")
-            p[0] = NodeDescription(NODE_ID.satisfy, p[1])
+            p[0] = NodeDescription(NODE_ID, p[1])
 
         def p_REGEX(p):
             """
             node_description : REGEX
             """
             # logging.debug("following rule: node_description -> REGEX")
-            p[0] = NodeDescription(NODE_REGEX.satisfy, p[1])
+            p[0] = NodeDescription(NODE_REGEX, p[1])
 
         def p_BLANK(p):
             """
             node_description : BLANK
             """
             # logging.debug("following rule: node_description -> BLANK")
-            p[0] = NodeDescription(NODE_ANY.satisfy, p[1])
+            p[0] = NodeDescription(NODE_ANY, p[1])
 
         def p_ROOT(p):
             """
             node_description : ROOT
             """
             # logging.debug("following rule: node_description -> ROOT")
-            p[0] = NodeDescription(NODE_ROOT.satisfy, p[1])
+            p[0] = NodeDescription(NODE_ROOT, p[1])
 
         def p_not_node_descriptions(p):
             """
@@ -303,17 +303,17 @@ class TregexPattern:
             """
             # logging.debug("following rule: relation_data -> RELATION")
             string_repr = p[1]
-            p[0] = RelationData(string_repr, self.RELATION_MAP[string_repr].searchNodeIterator)
+            p[0] = RelationData(string_repr, self.RELATION_MAP[string_repr])
 
         # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_named_nodes_rparen(p):
             """
-            relation_data : REL_W_STR_ARG '(' named_nodes ')'
+            relation_data : REL_W_STR_ARG '(' node_descriptions ')'
             """
             # logging.debug("following rule: relation_data -> REL_W_STR_ARG ( named_nodes )")
             string_repr = p[1]
             p[0] = RelationWithStrArgData(
-                string_repr, self.REL_W_STR_ARG_MAP[string_repr], arg=p[3].nodes
+                string_repr, self.REL_W_STR_ARG_MAP[string_repr], arg=p[3]
             )
 
         # 2.3 REL_W_NUM_ARG
@@ -388,18 +388,18 @@ class TregexPattern:
             """
             and_conditions_multi_relation : MULTI_RELATION "{" named_nodes_list "}"
             """
-            rel_key = p[1]
-            op = self.MULTI_RELATION_MAP[rel_key]
+            relation_key = p[1]
+            relation_op = self.MULTI_RELATION_MAP[relation_key]
             named_nodes_list = p[3]
             logging.debug(
-                f"following rule: and_conditions_multi_relation -> {rel_key} {{"
+                f"following rule: and_conditions_multi_relation -> {relation_key} {{"
                 " named_nodes_list }"
             )
 
             conditions = []
 
             for i, named_nodes in enumerate(named_nodes_list, 1):
-                multi_relation_data = MultiRelationData(rel_key, op, arg=i)
+                multi_relation_data = MultiRelationData(relation_key, relation_op, arg=i)
                 those_nodes, that_name = named_nodes.nodes, named_nodes.name
                 conditions.append(
                     ConditionOp(
@@ -410,7 +410,7 @@ class TregexPattern:
                 )
 
             any_nodes = list(node for tree in trees for node in tree.preorder_iter())
-            multi_relation_data = MultiRelationData(rel_key, op, arg=i + 1)  # type:ignore
+            multi_relation_data = MultiRelationData(relation_key, relation_op, arg=i + 1)  # type:ignore
             conditions.append(
                 Not(
                     ConditionOp(

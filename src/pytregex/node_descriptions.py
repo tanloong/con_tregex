@@ -5,6 +5,7 @@ from typing import Callable, NamedTuple
 from collections import namedtuple
 import re
 from typing import Generator, Iterator, List, Optional
+from relation import Relation
 
 from tree import Tree
 
@@ -25,7 +26,7 @@ class NamedNodes:
 
 
 class NodeDescription(NamedTuple):
-    satisfy_func: Callable
+    op: "NODE_OP"
     value: str
 
 
@@ -70,7 +71,7 @@ class NodeDescriptions:
 
     def satisfy(self, t: Tree) -> bool:
         for desc in self.descriptions:
-            if desc.satisfy_func(
+            if desc.op.satisfies(
                 t, desc.value, is_negated=self.is_negated, use_basic_cat=self.use_basic_cat
             ):
                 return True
@@ -81,10 +82,21 @@ class NodeDescriptions:
             if self.satisfy(node):
                 yield node
 
-
-class NODE_ID:
+class NODE_OP:
     @classmethod
-    def satisfy(
+    def satisfies(
+        cls,
+        node: Tree,
+        value: str = "",
+        *,
+        is_negated: bool = False,
+        use_basic_cat: bool = False,
+    ) -> bool:
+        raise NotImplementedError()
+
+class NODE_ID(NODE_OP):
+    @classmethod
+    def satisfies(
         cls, node: Tree, id: str, *, is_negated: bool = False, use_basic_cat: bool = False
     ) -> bool:
         attr = "basic_category" if use_basic_cat else "label"
@@ -96,9 +108,9 @@ class NODE_ID:
             return (value == id) != is_negated
 
 
-class NODE_REGEX:
+class NODE_REGEX(NODE_OP):
     @classmethod
-    def satisfy(
+    def satisfies(
         cls, node: Tree, regex: str, *, is_negated: bool = False, use_basic_cat: bool = False
     ) -> bool:
         attr = "basic_category" if use_basic_cat else "label"
@@ -131,9 +143,9 @@ class NODE_REGEX:
             return (re.search(regex, value) is not None) != is_negated
 
 
-class NODE_ANY:
+class NODE_ANY(NODE_OP):
     @classmethod
-    def satisfy(
+    def satisfies(
         cls,
         node: Tree,
         value: str = "",
@@ -144,9 +156,9 @@ class NODE_ANY:
         return not is_negated
 
 
-class NODE_ROOT:
+class NODE_ROOT(NODE_OP):
     @classmethod
-    def satisfy(
+    def satisfies(
         cls,
         node: Tree,
         value: str = "",

@@ -22,11 +22,11 @@ class ConditionOp(Condition):
     def __init__(
         self,
         relation_data: "AbstractRelationData",
-        that_descs: NodeDescriptions,
+        those_nodes: List["Tree"],
         that_name: Optional[str],
     ) -> None:
-        self.search_func = relation_data.search_func
-        self.that_descs = that_descs
+        self.satisfies = relation_data.satisfies
+        self.those_nodes = those_nodes
         self.that_name = that_name
 
     def get_names(self) -> Generator[Optional[str], None, None]:
@@ -47,15 +47,9 @@ class ConditionOp(Condition):
 
         matched_pairs = []
         for this_node in these_nodes:
-            search_g = self.search_func(this_node)
-            search_p = peekable(search_g)
-            if self.is_peekable_empty(search_p):
-                continue
-            matched_pairs.extend(
-                (this_node, that_node)
-                for that_node in search_p
-                if self.that_descs.satisfy(that_node)
-            )
+            for that_node in self.those_nodes:
+                if self.satisfies(this_node, that_node):
+                    matched_pairs.append((this_node, that_node))
 
         res = [pair[0] for pair in matched_pairs]
         if this_name is not None:

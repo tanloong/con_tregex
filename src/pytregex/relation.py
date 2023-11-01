@@ -4,10 +4,10 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Generator, List, Optional, TYPE_CHECKING
 
-from node_descriptions import NodeDescriptions
 from collins_head_finder import CollinsHeadFinder
 
 if TYPE_CHECKING:
+    from node_descriptions import NodeDescriptions
     from head_finder import HeadFinder
     from tree import Tree
 
@@ -606,7 +606,7 @@ class ANCESTOR_OF_LEAF(Relation):
 
 class UNBROKEN_CATEGORY_DOMINATES(Relation):
     @classmethod
-    def satisfies(cls, t1: "Tree", t2: "Tree", descs: NodeDescriptions) -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         # TODO passing in rel_arg is expansive, may be passing in node_descriptions is better?
         for kid in t1.children:
             if kid is t2:
@@ -618,7 +618,7 @@ class UNBROKEN_CATEGORY_DOMINATES(Relation):
 
     @classmethod
     def searchNodeIterator(
-        cls, t: "Tree", descs: NodeDescriptions
+        cls, t: "Tree", descs: "NodeDescriptions"
     ) -> Generator["Tree", None, None]:
         # TODO might need to implement a TregexMatcher class like java tregex
         # https://github.com/stanfordnlp/CoreNLP/blob/f8838d2639589f684cbaa58964cb29db5f23df7f/src/edu/stanford/nlp/trees/tregex/Relation.java#L1525
@@ -633,12 +633,12 @@ class UNBROKEN_CATEGORY_DOMINATES(Relation):
 
 class UNBROKEN_CATEGORY_IS_DOMINATED_BY(Relation):
     @classmethod
-    def satisfies(cls, t1: "Tree", t2: "Tree", descs: NodeDescriptions) -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         return UNBROKEN_CATEGORY_DOMINATES.satisfies(t2, t1, descs)
 
     @classmethod
     def searchNodeIterator(
-        cls, t: "Tree", descs: NodeDescriptions
+        cls, t: "Tree", descs: "NodeDescriptions"
     ) -> Generator["Tree", None, None]:
         parent_ = t.parent
         while True:
@@ -652,7 +652,7 @@ class UNBROKEN_CATEGORY_IS_DOMINATED_BY(Relation):
 
 class UNBROKEN_CATEGORY_PRECEDES(Relation):
     @classmethod
-    def satisfies(cls, t1: "Tree", t2: "Tree", descs: NodeDescriptions) -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         parent_ = t1.parent
         if parent_ is None:  # if t1 is root
             return False
@@ -679,7 +679,7 @@ class UNBROKEN_CATEGORY_PRECEDES(Relation):
 
     @classmethod
     def searchNodeIterator(
-        cls, t: "Tree", descs: NodeDescriptions
+        cls, t: "Tree", descs: "NodeDescriptions"
     ) -> Generator["Tree", None, None]:
         for immediate_follower in IMMEDIATELY_PRECEDES.searchNodeIterator(t):
             yield immediate_follower
@@ -690,12 +690,12 @@ class UNBROKEN_CATEGORY_PRECEDES(Relation):
 
 class UNBROKEN_CATEGORY_FOLLOWS(Relation):
     @classmethod
-    def satisfies(cls, t1: "Tree", t2: "Tree", descs: NodeDescriptions) -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         return UNBROKEN_CATEGORY_PRECEDES.satisfies(t2, t1, descs)
 
     @classmethod
     def searchNodeIterator(
-        cls, t: "Tree", descs: NodeDescriptions
+        cls, t: "Tree", descs: "NodeDescriptions"
     ) -> Generator["Tree", None, None]:
         for immediate_precedent in IMMEDIATELY_FOLLOWS.searchNodeIterator(t):
             yield immediate_precedent
@@ -820,6 +820,10 @@ class AbstractRelationData(ABC):
     def searchNodeIterator(self, this_node: "Tree"):
         raise NotImplementedError()
 
+    @abstractmethod
+    def satisfies(self, this_node: "Tree", that_node: "Tree"):
+        raise NotImplementedError()
+
 
 class RelationData(AbstractRelationData):
     def __init__(self, string_repr: str, op: Relation) -> None:
@@ -837,7 +841,7 @@ class RelationWithStrArgData(AbstractRelationData):
         string_repr: str,
         op: Relation,
         *,
-        arg: NodeDescriptions,
+        arg: "NodeDescriptions",
     ) -> None:
         super().__init__(string_repr, op)
         self.arg = arg
