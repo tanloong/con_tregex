@@ -21,6 +21,8 @@ coverage.xml
 *.parsed
 *.mp4
 *.out
+*.pdf
+*.vym
 doc
 note.txt
 test.py
