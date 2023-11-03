@@ -8,7 +8,7 @@ import os
 import sys
 from typing import List, Optional, Tuple
 
-from tregex import TregexPattern
+from pytregex.tregex import TregexPattern
 
 # For all the procedures in TregexUI, return a tuple as the result The first
 # element bool indicates whether the procedure succeeds The second element is
