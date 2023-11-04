@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Generator, List, Optional, TYPE_CHECKING
 
-from pytregex.collins_head_finder import CollinsHeadFinder
+from collins_head_finder import CollinsHeadFinder
 
 if TYPE_CHECKING:
     from node_descriptions import NodeDescriptions

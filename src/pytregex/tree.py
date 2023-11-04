@@ -6,7 +6,7 @@ from collections import deque
 import re
 from typing import Deque, Generator, List, Optional, TYPE_CHECKING, Tuple
 
-from pytregex.peekable import peekable
+from peekable import peekable
 
 if TYPE_CHECKING:
     from head_finder import HeadFinder

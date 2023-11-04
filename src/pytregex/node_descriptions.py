@@ -5,9 +5,9 @@ from typing import Callable, NamedTuple
 from collections import namedtuple
 import re
 from typing import Generator, Iterator, List, Optional
-from pytregex.relation import Relation
+from relation import Relation
 
-from pytregex.tree import Tree
+from tree import Tree
 
 
 class NamedNodes:

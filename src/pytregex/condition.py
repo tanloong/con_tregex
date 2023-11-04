@@ -4,8 +4,8 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Generator, List, Optional, TYPE_CHECKING, Tuple
 
-from pytregex.node_descriptions import NodeDescriptions
-from pytregex.peekable import peekable
+from node_descriptions import NodeDescriptions
+from peekable import peekable
 
 if TYPE_CHECKING:
     from tree import Tree

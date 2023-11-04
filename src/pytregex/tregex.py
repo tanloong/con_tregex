@@ -2,10 +2,10 @@ import logging
 import re
 from typing import Dict, List, Never
 
-from pytregex.ply import lex, yacc
+from ply import lex, yacc
 
-from pytregex.condition import And, ConditionOp, Not, Opt, Or
-from pytregex.node_descriptions import (
+from condition import And, ConditionOp, Not, Opt, Or
+from node_descriptions import (
     NODE_ANY,
     NODE_ID,
     NODE_REGEX,
@@ -14,8 +14,8 @@ from pytregex.node_descriptions import (
     NodeDescription,
     NodeDescriptions,
 )
-from pytregex.relation import *
-from pytregex.tree import Tree
+from relation import *
+from tree import Tree
 
 
 class TregexPattern:
