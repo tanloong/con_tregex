@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding=utf-8 -*-
 
-from typing import Callable, NamedTuple
-from collections import namedtuple
 import re
-from typing import Generator, Iterator, List, Optional
-from relation import Relation
+from collections import namedtuple
+from typing import Callable, Generator, Iterable, Iterator, List, NamedTuple, Optional
 
+from relation import Relation
 from tree import Tree
 
 
@@ -82,6 +81,7 @@ class NodeDescriptions:
             if self.satisfy(node):
                 yield node
 
+
 class NODE_OP:
     @classmethod
     def satisfies(
@@ -93,6 +93,18 @@ class NODE_OP:
         use_basic_cat: bool = False,
     ) -> bool:
         raise NotImplementedError()
+
+    @classmethod
+    def in_(
+        cls,
+        node: Tree,
+        ids: Iterable[str],
+        *,
+        is_negated: bool = False,
+        use_basic_cat: bool = False,
+    ) -> bool:
+        return bool(any(cls.satisfies(node, id, is_negated=is_negated, use_basic_cat=use_basic_cat) for id in ids))
+
 
 class NODE_ID(NODE_OP):
     @classmethod

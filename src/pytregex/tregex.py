@@ -2,8 +2,6 @@ import logging
 import re
 from typing import Dict, List, Never
 
-from ply import lex, yacc
-
 from condition import And, ConditionOp, Not, Opt, Or
 from node_descriptions import (
     NODE_ANY,
@@ -14,6 +12,7 @@ from node_descriptions import (
     NodeDescription,
     NodeDescriptions,
 )
+from ply import lex, yacc
 from relation import *
 from tree import Tree
 
@@ -553,7 +552,7 @@ class TregexPattern:
             """
             logging.debug("following rule: expr -> named_nodes_list")
             named_nodes_list = p[1]
-            p[0] = list(node for named_nodes in named_nodes_list for node in named_nodes.nodes)
+            p[0] = [node for named_nodes in named_nodes_list for node in named_nodes.nodes]
 
         def p_error(p) -> Never:
             if p:

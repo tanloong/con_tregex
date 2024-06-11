@@ -1,0 +1,40 @@
+# Ruff complete options: https://docs.astral.sh/ruff/settings/#extend
+[tool.ruff]
+line-length = 112
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle
+    "F", # Pyflakes
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I", # isort
+]
+ignore = [
+    "E501",
+    "B011",
+    "UP038", # 'isinstance(x, int | float)' causes slower code
+    "F403", "F405",  # start imports
+]
+
+[tool.ruff.lint.flake8-type-checking]
+# Add quotes around type annotations, if doing so would allow
+# an import to be moved into a type-checking block.
+quote-annotations = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+# https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-library-stubs-or-py-typed-marker
+ignore_missing_imports = true
+
+[tool.pyright]
+reportIncompatibleMethodOverride = false
+reportOptionalMemberAccess = false
+reportGeneralTypeIssues = false
+reportUnusedFunction = false
