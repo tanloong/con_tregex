@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-# -*- coding=utf-8 -*-
 
 import re
+from abc import ABC, abstractmethod
 from collections import namedtuple
-from typing import Callable, Generator, Iterable, Iterator, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, Callable, Generator, Iterable, Iterator, List, NamedTuple, Optional
 
-from relation import Relation
+from relation import AbstractRelation
 from tree import Tree
+
+if TYPE_CHECKING:
+    from pytregex.condition import AbstractCondition
 
 
 class NamedNodes:
-    def __init__(
-        self, name: Optional[str], nodes: Optional[List[Tree]], string_repr: str = ""
-    ) -> None:
+    def __init__(self, name: Optional[str], nodes: Optional[List[Tree]], string_repr: str = "") -> None:
         self.name = name
         self.nodes = nodes
         self.string_repr = string_repr
@@ -25,7 +26,7 @@ class NamedNodes:
 
 
 class NodeDescription(NamedTuple):
-    op: "NODE_OP"
+    op: type["NODE_OP"]
     value: str
 
 
@@ -43,6 +44,7 @@ class NodeDescriptions:
 
         self.name = None
         self.string_repr = "".join(desc.value for desc in self.descriptions)
+        self.condition: "AbstractCondition" | None = None
 
     def __iter__(self) -> Iterator[NodeDescription]:
         return iter(self.descriptions)
@@ -56,6 +58,9 @@ class NodeDescriptions:
     def set_name(self, name: str) -> None:
         self.name = name
 
+    def set_condition(self, condition: "AbstractCondition") -> None:
+        self.condition = condition
+
     def set_string_repr(self, s: str):
         self.string_repr = s
 
@@ -65,25 +70,32 @@ class NodeDescriptions:
     def toggle_negated(self) -> None:
         self.is_negated = not self.is_negated
 
-    def toggle_use_basic_cat(self) -> None:
-        self.use_basic_cat = not self.use_basic_cat
+    def set_use_basic_cat(self) -> None:
+        self.use_basic_cat = True
 
-    def satisfy(self, t: Tree) -> bool:
+    def satisfies(self, t: Tree) -> bool:
+        cond = self.condition
         for desc in self.descriptions:
-            if desc.op.satisfies(
+            if not desc.op.satisfies(
                 t, desc.value, is_negated=self.is_negated, use_basic_cat=self.use_basic_cat
             ):
+                continue
+            if cond is None or cond.satisfies(t):
                 return True
         return False
 
     def searchNodeIterator(self, t: Tree) -> Generator[Tree, None, None]:
+        cond = self.condition
         for node in t.preorder_iter():
-            if self.satisfy(node):
+            if not self.satisfies(node):
+                continue
+            if cond is None or cond.satisfies(node):
                 yield node
 
 
-class NODE_OP:
+class NODE_OP(ABC):
     @classmethod
+    @abstractmethod
     def satisfies(
         cls,
         node: Tree,
@@ -95,6 +107,7 @@ class NODE_OP:
         raise NotImplementedError()
 
     @classmethod
+    @abstractmethod
     def in_(
         cls,
         node: Tree,
@@ -103,14 +116,14 @@ class NODE_OP:
         is_negated: bool = False,
         use_basic_cat: bool = False,
     ) -> bool:
-        return bool(any(cls.satisfies(node, id, is_negated=is_negated, use_basic_cat=use_basic_cat) for id in ids))
+        return bool(
+            any(cls.satisfies(node, id, is_negated=is_negated, use_basic_cat=use_basic_cat) for id in ids)
+        )
 
 
 class NODE_ID(NODE_OP):
     @classmethod
-    def satisfies(
-        cls, node: Tree, id: str, *, is_negated: bool = False, use_basic_cat: bool = False
-    ) -> bool:
+    def satisfies(cls, node: Tree, id: str, *, is_negated: bool = False, use_basic_cat: bool = False) -> bool:
         attr = "basic_category" if use_basic_cat else "label"
         value = getattr(node, attr)
 

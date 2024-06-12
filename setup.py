@@ -1,8 +1,8 @@
 import setuptools
 
-with open("./README.md", "r", encoding="utf-8") as f:
+with open("./README.md", encoding="utf-8") as f:
     long_description = f.read()
-with open("./src/pytregex/about.py", "r", encoding="utf-8") as f:
+with open("./src/pytregex/about.py", encoding="utf-8") as f:
     about = {}
     exec(f.read(), about)
 setuptools.setup(

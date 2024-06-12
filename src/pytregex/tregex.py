@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Dict, List, Never
 
-from condition import And, ConditionOp, Not, Opt, Or
+from condition import And, Condition, Not, Opt, Or
 from node_descriptions import (
     NODE_ANY,
     NODE_ID,
@@ -16,9 +16,12 @@ from ply import lex, yacc
 from relation import *
 from tree import Tree
 
+logging.basicConfig(level=logging.DEBUG, filemode="w", format="%(filename)10s:%(lineno)4d:%(message)s")
+log = logging.getLogger()
+
 
 class TregexPattern:
-    RELATION_MAP = {
+    RELATION_MAP: dict[str, type[AbstractRelation]] = {
         "<": PARENT_OF,
         ">": CHILD_OF,
         "<<": DOMINATES,
@@ -63,24 +66,20 @@ class TregexPattern:
         "<<<-": ANCESTOR_OF_LEAF,
     }
 
-    REL_W_STR_ARG_MAP = {
+    REL_W_STR_ARG_MAP: dict[str, type[AbstractRelation]] = {
         "<+": UNBROKEN_CATEGORY_DOMINATES,
         ">+": UNBROKEN_CATEGORY_IS_DOMINATED_BY,
         ".+": UNBROKEN_CATEGORY_PRECEDES,
         ",+": UNBROKEN_CATEGORY_FOLLOWS,
     }
 
-    REL_W_NUM_ARG_MAP = {
+    REL_W_NUM_ARG_MAP: dict[str, type[AbstractRelation]] = {
         ">": ITH_CHILD_OF,
         ">-": ITH_CHILD_OF,
         "<": HAS_ITH_CHILD,
         "<-": HAS_ITH_CHILD,
         "<<<": ANCESTOR_OF_ITH_LEAF,
         "<<<-": ANCESTOR_OF_ITH_LEAF,
-    }
-
-    MULTI_RELATION_MAP = {
-        "<...": HAS_ITH_CHILD,
     }
 
     tokens = [
@@ -107,8 +106,7 @@ class TregexPattern:
 
     # REL_W_NUM_ARG don't have to be declared, as they have already been as t_RELATION
 
-    multi_rels = sorted(MULTI_RELATION_MAP.keys(), key=len, reverse=True)
-    t_MULTI_RELATION = "|".join(map(re.escape, multi_rels))
+    t_MULTI_RELATION = re.escape("<...")
 
     t_BLANK = r"__"
     t_REGEX = r"/[^/\n\r]*/[ix]*"
@@ -132,10 +130,11 @@ class TregexPattern:
         self.pattern = tregex_pattern
 
     def findall(self, tree_string: str) -> List[Tree]:
-        trees = list(Tree.fromstring(tree_string))
+        trees = tuple(Tree.fromstring(tree_string))
         parser = self.make_parser(trees)
         self._reset_lexer_state()
 
+        # return parser.parse(lexer=self.lexer, debug=log)
         return parser.parse(lexer=self.lexer)
 
     def get_nodes(self, name: str) -> List[Tree]:
@@ -143,8 +142,7 @@ class TregexPattern:
             handled_nodes = self.backrefs_map[name]
         except KeyError:
             raise SystemExit(
-                f'Error!!  There is no matched node "{name}"!  Did you specify such a'
-                " label in the pattern?"
+                f'Error!!  There is no matched node "{name}"!  Did you specify such a' " label in the pattern?"
             )
         else:
             return handled_nodes
@@ -156,20 +154,60 @@ class TregexPattern:
         """
         self.lexer.lexpos = 0
 
-    def make_parser(self, trees: List[Tree]):
+    def make_parser(self, trees: tuple[Tree, ...]):
         tokens = self.tokens
 
         precedence = (
             # keep consistency with Stanford Tregex
             # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
-            # https://github.com/dabeaz/ply/issues/215
-            ("left", "OR_REL"),
-            # REL_W_NUM_ARG don't have to be declared, as they have already been as t_RELATION
-            ("left", "RELATION", "REL_W_STR_ARG", "MULTI_RELATION"),
-            ("left", "IMAGINE_REDUCE"),
-            ("right", "OR_NODE"),
-            ("nonassoc", "="),
+
+            # shift on shift/reduce conflicts:
+            # - node_descriptions_list -> node_descriptions_list node_descriptions .
+            #  + condition -> . ! condition
+            #  + condition -> . ! and_conditions_multi_relation
+            #  + condition -> . ( condition )
+            #  + condition -> . ( and_conditions )
+            ("left", "NODEDESCS_AFTER_NODEDESCSLIST"),
+            # shift on shift/reduce conflicts:
+            # - node_descriptions -> node_descriptions or_conditions .
+            # + or_conditions -> or_conditions . OR_REL and_conditions
+            # - node_descriptions -> node_descriptions and_conditions .
+            #  + and_conditions_multi_relation -> . MULTI_RELATION { node_descriptions_list }
+            #  + condition -> . & condition
+            #  + condition -> . ( and_conditions )
+            #  + condition -> . ( condition )
+            #  + condition -> . ( or_conditions )
+            #  + condition -> . ? and_conditions_multi_relation
+            #  + condition -> . ? condition
+            #  + condition -> . [ and_conditions ]
+            #  + condition -> . [ or_conditions ]
+            #  + or_conditions -> and_conditions . OR_REL and_conditions
+            #  + relation_data -> . RELATION
+            #  + relation_data -> . RELATION NUMBER
+            #  + relation_data -> . REL_W_STR_ARG ( node_descriptions )
+            ("left", "ORCONDS_AFTER_NODEDESCS", "ANDCONDS_AFTER_NODEDESCS"),
+            ("left", "?", "&", "(", "[", "OR_REL"),
+            (
+                "left",
+                "RELATION",
+                "REL_W_STR_ARG",
+                "MULTI_RELATION",
+            ),  # REL_W_NUM_ARG don't have to be declared, as they have already been as t_RELATION
+            # shift on shift/reduce conflicts:
+            # + condition -> ( condition . )
+            # - and_conditions -> condition .
+            # + node_description -> ( node_description . )
+            # - node_descriptions -> node_description .
+            # + node_descriptions -> node_descriptions . OR_NODE node_description
+            #  - node_descriptions -> ! node_descriptions .
+            #  - node_descriptions -> @ node_descriptions .
+            # + condition -> . ! condition
+            # - node_descriptions_list -> node_descriptions .
+            ("left", "IMAGINE"),
+            ("left", ")", "!", "@"),
+            ("left", "OR_NODE"),
+            # ("nonassoc", "="),
         )
 
         log_indent = 0
@@ -179,35 +217,30 @@ class TregexPattern:
             """
             node_description : ID
             """
-            # logging.debug("following rule: node_description -> ID")
             p[0] = NodeDescription(NODE_ID, p[1])
 
         def p_REGEX(p):
             """
             node_description : REGEX
             """
-            # logging.debug("following rule: node_description -> REGEX")
             p[0] = NodeDescription(NODE_REGEX, p[1])
 
         def p_BLANK(p):
             """
             node_description : BLANK
             """
-            # logging.debug("following rule: node_description -> BLANK")
             p[0] = NodeDescription(NODE_ANY, p[1])
 
         def p_ROOT(p):
             """
             node_description : ROOT
             """
-            # logging.debug("following rule: node_description -> ROOT")
             p[0] = NodeDescription(NODE_ROOT, p[1])
 
         def p_not_node_descriptions(p):
             """
             node_descriptions : '!' node_descriptions
             """
-            # logging.debug("following rule: node_descriptions -> ! node_descriptions")
             p[2].toggle_negated()
             p[2].set_string_repr(f"!{p[2].string_repr}")
 
@@ -217,82 +250,58 @@ class TregexPattern:
             """
             node_descriptions : '@' node_descriptions
             """
-            # logging.debug("following rule: node_descriptions -> @ node_descriptions")
-            p[2].toggle_use_basic_cat()
+            p[2].set_use_basic_cat()
             p[2].set_string_repr(f"@{p[2].string_repr}")
 
             p[0] = p[2]
 
         def p_node_description(p):
             """
-            node_descriptions : node_description
+            node_descriptions : node_description %prec IMAGINE
             """
-            # logging.debug("following rule: node_descriptions -> node_description")
             p[0] = NodeDescriptions([p[1]])
 
         def p_node_descriptions_or_node_node_description(p):
             """
             node_descriptions : node_descriptions OR_NODE node_description
             """
-            # logging.debug("following rule: node_descriptions -> node_descriptions OR_NODE node_description")
             p[1].add_description(p[3])
             p[1].set_string_repr(f"{p[1].string_repr}{p[2]}{p[3].value}")
 
             p[0] = p[1]
 
-        def p_node_descriptions(p):
-            """
-            named_nodes : node_descriptions
-            """
-            nodes = [node for tree in trees for node in p[1].searchNodeIterator(tree)]
-            string_repr = p[1].string_repr
-            logging.debug(f"following rule: named_nodes -> {string_repr}")
-
-            p[0] = NamedNodes(None, nodes, string_repr)
-
         def p_lparen_node_description_rparen(p):
             """
             node_description : '(' node_description ')'
             """
-            # logging.debug("following rule: node_description -> ( node_description )")
             p[0] = p[2]
 
         def p_lparen_node_descriptions_rparen(p):
             """
             node_descriptions : '(' node_descriptions ')'
             """
-            # logging.debug("following rule: node_descriptions -> ( node_descriptions )")
             p[0] = p[2]
 
-        def p_lparen_named_nodes_rparen(p):
-            """
-            named_nodes : '(' named_nodes ')'
-            """
-            # logging.debug("following rule: named_nodes -> ( named_nodes )")
-            p[0] = p[2]
+        # def p_named_nodes_equal_id(p):
+        #     """
+        #     named_nodes : named_nodes '=' ID
+        #     """
+        #     name = p[3]
+        #     named_nodes = p[1]
+        #
+        #     named_nodes.set_name(name)
+        #     self.backrefs_map[name] = named_nodes.nodes
+        #
+        #     p[0] = named_nodes
 
-        def p_named_nodes_equal_id(p):
-            """
-            named_nodes : named_nodes '=' ID
-            """
-            name = p[3]
-            named_nodes = p[1]
-            logging.debug(f"following rule: {named_nodes.string_repr} = {name}")
-
-            named_nodes.set_name(name)
-            self.backrefs_map[name] = named_nodes.nodes
-
-            p[0] = named_nodes
-
-        def p_link_id(p):
-            """
-            named_nodes : '~' ID
-            """
-            logging.debug("following rule: named_nodes -> '~' ID")
-            id = p[2]
-            nodes = self.get_nodes(id)
-
-            p[0] = NamedNodes(None, nodes, string_repr=f"~ {id}")
+        # def p_link_id(p):
+        #     """
+        #     named_nodes : '~' ID
+        #     """
+        #     id = p[2]
+        #     nodes = self.get_nodes(id)
+        #
+        #     p[0] = NamedNodes(None, nodes, string_repr=f"~ {id}")
 
         # 2. relation
         # 2.1 RELATION
@@ -300,122 +309,110 @@ class TregexPattern:
             """
             relation_data : RELATION
             """
-            # logging.debug("following rule: relation_data -> RELATION")
             string_repr = p[1]
             p[0] = RelationData(string_repr, self.RELATION_MAP[string_repr])
 
         # 2.2 REL_W_STR_ARG
-        def p_rel_w_str_arg_lparen_named_nodes_rparen(p):
+        def p_rel_w_str_arg_lparen_node_descriptions_rparen(p):
             """
             relation_data : REL_W_STR_ARG '(' node_descriptions ')'
             """
-            # logging.debug("following rule: relation_data -> REL_W_STR_ARG ( named_nodes )")
             string_repr = p[1]
-            p[0] = RelationWithStrArgData(
-                string_repr, self.REL_W_STR_ARG_MAP[string_repr], arg=p[3]
-            )
+            p[0] = RelationWithStrArgData(string_repr, self.REL_W_STR_ARG_MAP[string_repr], arg=p[3])
 
         # 2.3 REL_W_NUM_ARG
         def p_relation_number(p):
             """
             relation_data : RELATION NUMBER
             """
-            # logging.debug("following rule: relation_data -> RELATION NUMBER")
             rel_key, num = p[1:]
             string_repr = f"{rel_key}{num}"
 
             if rel_key.endswith("-"):
                 num = f"-{num}"
-            p[0] = RelationWithNumArgData(
-                string_repr, self.REL_W_NUM_ARG_MAP[rel_key], arg=int(num)
-            )
+            p[0] = RelationWithNumArgData(string_repr, self.REL_W_NUM_ARG_MAP[rel_key], arg=int(num))
 
-        def p_not_and_condition(p):
+        def p_not_condition(p):
             """
-            condition_op : '!' condition_op
+            condition : '!' condition
             """
-            logging.debug("following rule: condition_op -> ! condition_op")
             p[0] = Not(p[2])
 
-        def p_optional_and_condition(p):
+        def p_optional_condition(p):
             """
-            condition_op : '?' condition_op
+            condition : '?' condition
             """
-            logging.debug("following rule: condition_op -> ? condition_op")
             p[0] = Opt(p[2])
 
         # 3. and_conditions
-        def p_relation_data_named_nodes(p):
+        def p_relation_data_node_descriptions(p):
             """
-            condition_op : relation_data named_nodes %prec IMAGINE_REDUCE
+            condition : relation_data node_descriptions %prec IMAGINE
             """
-            # %prec IMAGINE_REDUCE: https://github.com/dabeaz/ply/issues/215
-            logging.debug(
-                f"following rule: condition_op -> {p[1].string_repr} {p[2].string_repr}"
-            )
-            relation_data = p[1]
-            those_nodes, that_name = p[2].nodes, p[2].name
+            # %prec IMAGINE: https://github.com/dabeaz/ply/issues/215
+            # relation_data = p[1]
+            # those_nodes, that_name = p[2].nodes, p[2].name
 
-            p[0] = ConditionOp(
-                relation_data=relation_data, those_nodes=those_nodes, that_name=that_name
-            )
+            # p[0] = ConditionOp(
+            #     relation_data=relation_data, those_nodes=those_nodes, that_name=that_name
+            # )
+            p[0] = Condition(relation_data=p[1], node_descriptions=p[2])
 
-        def p_and_and_condition(p):
+        def p_and_condition(p):
             """
-            condition_op : '&' condition_op
+            condition : '&' condition
             """
-            # logging.debug("following rule: condition_op -> & condition_op")
             p[0] = p[2]
 
-        def p_and_conditions_and_condition(p):
+        def p_condition(p):
             """
-            and_conditions : and_conditions condition_op
+            and_conditions : condition %prec IMAGINE
             """
-            logging.debug("following rule: and_conditions -> and_conditions condition_op")
+            p[0] = And([p[1]])
+
+        def p_and_conditions_condition(p):
+            """
+            and_conditions : and_conditions condition
+            """
             p[1].append_condition(p[2])
 
             p[0] = p[1]
 
-        def p_and_condition(p):
+        def p_node_descriptions(p):
             """
-            and_conditions : condition_op
+            node_descriptions_list : node_descriptions %prec IMAGINE
+                                   | node_descriptions ';'
             """
-            logging.debug("following rule: and_conditions -> condition_op")
-            p[0] = And([p[1]])
+            p[0] = [p[1]]
 
-        def p_multi_relation_named_nodes(p):
+        def p_node_descriptions_list_node_descriptions(p):
             """
-            and_conditions_multi_relation : MULTI_RELATION "{" named_nodes_list "}"
+            node_descriptions_list : node_descriptions_list node_descriptions %prec NODEDESCS_AFTER_NODEDESCSLIST
+                                   | node_descriptions_list node_descriptions ';'
             """
-            relation_key = p[1]
-            relation_op = self.MULTI_RELATION_MAP[relation_key]
-            named_nodes_list = p[3]
-            logging.debug(
-                f"following rule: and_conditions_multi_relation -> {relation_key} {{"
-                " named_nodes_list }"
-            )
+            p[1].append(p[2])
+            p[0] = p[1]
+
+        def p_multi_relation_node_descriptions_list(p):
+            """
+            and_conditions_multi_relation : MULTI_RELATION "{" node_descriptions_list "}"
+            """
+            rel_key = p[1]
+            rel_op = HAS_ITH_CHILD
+            node_descriptions_list = p[3]
 
             conditions = []
-
-            for i, named_nodes in enumerate(named_nodes_list, 1):
-                multi_relation_data = MultiRelationData(relation_key, relation_op, arg=i)
-                those_nodes, that_name = named_nodes.nodes, named_nodes.name
+            i = -1
+            for i, node_descriptions in enumerate(node_descriptions_list, 1):
+                multi_relation_data = RelationWithNumArgData(rel_key, rel_op, arg=i)
                 conditions.append(
-                    ConditionOp(
-                        relation_data=multi_relation_data,
-                        those_nodes=those_nodes,
-                        that_name=that_name,
-                    )
+                    Condition(relation_data=multi_relation_data, node_descriptions=node_descriptions)
                 )
 
-            any_nodes = list(node for tree in trees for node in tree.preorder_iter())
-            multi_relation_data = MultiRelationData(relation_key, relation_op, arg=i + 1)  # type:ignore
+            multi_relation_data = RelationWithNumArgData(rel_key, rel_op, arg=i + 1)
+            node_descriptions = NodeDescriptions([NodeDescription(NODE_ANY, self.t_BLANK)])
             conditions.append(
-                Not(
-                    ConditionOp(
-                        relation_data=multi_relation_data, those_nodes=any_nodes, that_name=None
-                    )
-                )
+                Not(Condition(relation_data=multi_relation_data, node_descriptions=node_descriptions))
             )
 
             p[0] = And(conditions)
@@ -424,144 +421,115 @@ class TregexPattern:
             """
             and_conditions : and_conditions and_conditions_multi_relation
             """
-            logging.debug(
-                "following rule: and_conditions -> and_conditions and_conditions_multi_relation"
-            )
             p[0] = And([p[1], p[2]])
 
         def p_and_conditions_multi_relation(p):
             """
             and_conditions : and_conditions_multi_relation
             """
-            logging.debug("following rule: and_conditions -> and_conditions_multi_relation")
             p[0] = p[1]
 
         def p_not_and_conditions_multi_relation(p):
             """
-            condition_op : '!' and_conditions_multi_relation
+            condition : '!' and_conditions_multi_relation
             """
-            logging.debug("following rule: condition_op -> ! and_conditions_multi_relation")
             p[0] = Not(p[2])
 
         def p_optional_and_conditions_multi_relation(p):
             """
-            condition_op : '?' and_conditions_multi_relation
+            condition : '?' and_conditions_multi_relation
             """
-            logging.debug(
-                "following rule: optional_and_condition -> ? and_conditions_multi_relation"
-            )
             p[0] = Opt(p[2])
 
         def p_lparen_and_condition_rparen(p):
             """
-            condition_op : '(' condition_op ')'
+            condition : '(' condition ')'
             """
-            logging.debug("following rule: condition_op : ( condition_op )")
             p[0] = p[2]
 
         def p_and_conditions_or_and_conditions(p):
             """
             or_conditions : and_conditions OR_REL and_conditions
             """
-            logging.debug(
-                f"following rule: or_conditions -> and_conditions {p[2]} and_conditions"
-            )
-
             p[0] = Or([p[1], p[3]])
 
         def p_or_conditions_or_rel_and_conditions(p):
             """
             or_conditions : or_conditions OR_REL and_conditions
             """
-            logging.debug(
-                f"following rule: or_conditions -> or_conditions {p[2]} and_conditions"
-            )
             p[1].append_condition(p[3])
 
             p[0] = p[1]
 
         def p_lparen_or_conditions_rparen(p):
             """
-            condition_op : '(' or_conditions ')'
-                          | '[' or_conditions ']'
+            condition : '(' or_conditions ')'
+                      | '[' or_conditions ']'
             """
-            logging.debug(f"following rule: condition_op -> {p[1]} or_conditions {p[3]}")
             p[0] = p[2]
 
         def p_not_lparen_and_conditions_rparen(p):
             """
-            condition_op : '(' and_conditions ')'
-                          | '[' and_conditions ']'
+            condition : '(' and_conditions ')'
+                      | '[' and_conditions ']'
             """
-            logging.debug(f"following rule: condition_op -> ! {p[1]} and_conditions {p[3]}")
             p[0] = p[2]
 
-        def p_named_nodes_and_conditions(p):
+        def p_node_descriptions_and_conditions(p):
             """
-            named_nodes : named_nodes and_conditions
+            node_descriptions : node_descriptions and_conditions %prec ANDCONDS_AFTER_NODEDESCS
             """
-            logging.debug("following rule: named_nodes -> named_nodes and_conditions")
-            named_nodes = p[1]
-            and_conditions = p[2]
-
-            matched_nodes, backrefs_map = and_conditions.match(
-                these_nodes=named_nodes.nodes, this_name=named_nodes.name
-            )
-            self.backrefs_map.update(backrefs_map)
-
-            named_nodes.set_nodes(matched_nodes)
-            p[0] = named_nodes
-
-        def p_named_nodes_or_conditions(p):
-            """
-            named_nodes : named_nodes or_conditions
-            """
-            logging.debug("following rule: named_nodes -> named_nodes or_conditions")
-            named_nodes = p[1]
-            or_conditions = p[2]
-
-            matched_nodes, backrefs_map = or_conditions.match(
-                these_nodes=named_nodes.nodes, this_name=named_nodes.name
-            )
-            self.backrefs_map.update(backrefs_map)
-
-            named_nodes.set_nodes(matched_nodes)
-            p[0] = named_nodes
-
-        def p_named_nodes(p):
-            """
-            named_nodes_list : named_nodes
-                             | named_nodes ';'
-            """
-            logging.debug("following rule: named_nodes_list -> named_nodes")
-            # List[List[Tree]]
-            p[0] = [p[1]]
-
-        def p_named_nodes_list_named_nodes(p):
-            """
-            named_nodes_list : named_nodes_list named_nodes
-                             | named_nodes_list named_nodes ';'
-            """
-            logging.debug("following rule: named_nodes_list -> named_nodes_list named_nodes")
-            p[1].append(p[2])
+            p[1].set_condition(p[2])
             p[0] = p[1]
 
-        def p_named_nodes_list(p):
+        # def p_node_descriptions_and_conditions(p):
+        #     """
+        #     nodes : node_descriptions and_conditions
+        #     """
+        #     node_descriptions, and_conditions = p[1:]
+        #     nodes = [
+        #         node
+        #         for tree in trees
+        #         for candidate in node_descriptions.searchNodeIterator(tree)
+        #         for node in and_conditions.searchNodeIterator(candidate)
+        #     ]
+        #     p[0] = nodes
+
+        def p_node_descriptions_or_conditions(p):
             """
-            expr : named_nodes_list
+            node_descriptions : node_descriptions or_conditions %prec ORCONDS_AFTER_NODEDESCS
             """
-            logging.debug("following rule: expr -> named_nodes_list")
-            named_nodes_list = p[1]
-            p[0] = [node for named_nodes in named_nodes_list for node in named_nodes.nodes]
+            p[1].set_condition(p[2])
+            p[0] = p[1]
+
+        # def p_node_descriptions_or_conditions(p):
+        #     """
+        #     nodes : node_descriptions or_conditions
+        #     """
+        #     node_descriptions, or_conditions = p[1:]
+        #     nodes = [
+        #         node
+        #         for tree in trees
+        #         for candidate in node_descriptions.searchNodeIterator(tree)
+        #         for node in or_conditions.searchNodeIterator(candidate)
+        #     ]
+        #     p[0] = nodes
+
+        def p_node_descriptions_list(p):
+            """
+            nodes : node_descriptions_list
+            """
+            nodes = []
+            for tree in trees:
+                for node_descriptions in p[1]:
+                    nodes.extend(node_descriptions.searchNodeIterator(tree))
+            p[0] = nodes
 
         def p_error(p) -> Never:
             if p:
-                msg = (
-                    f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token"
-                    f" '{p.value}'"
-                )
+                msg = f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token '{p.value}'"
             else:
                 msg = "Parsing Error at EOF"
             raise SystemExit(msg)
 
-        return yacc.yacc(debug=False, start="expr")
+        return yacc.yacc(debug=True, start="nodes")

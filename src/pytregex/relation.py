@@ -2,13 +2,13 @@
 # -*- coding=utf-8 -*-
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generator, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Generator, List, Optional
 
 from collins_head_finder import CollinsHeadFinder
 
 if TYPE_CHECKING:
-    from node_descriptions import NodeDescriptions
     from head_finder import HeadFinder
+    from node_descriptions import NodeDescriptions
     from tree import Tree
 
 # reference: https://nlp.stanford.edu/nlp/javadoc/javanlp-3.5.0/edu/stanford/nlp/trees/tregex/TregexPattern.html
@@ -21,19 +21,21 @@ if TYPE_CHECKING:
 # TODO use searchStack like Relation.java
 
 
-class Relation:
+class AbstractRelation(ABC):
     symbol: Optional[str] = None
 
     @classmethod
+    @abstractmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", arg=None) -> bool:
         raise NotImplementedError
 
     @classmethod
+    @abstractmethod
     def searchNodeIterator(cls, t: "Tree", arg=None) -> Generator["Tree", None, None]:
         raise NotImplementedError
 
 
-class DOMINATES(Relation):
+class DOMINATES(AbstractRelation):
     symbol: Optional[str] = "<<"
 
     @classmethod
@@ -56,7 +58,7 @@ class DOMINATES(Relation):
                 yield descendant
 
 
-class DOMINATED_BY(Relation):
+class DOMINATED_BY(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return DOMINATES.satisfies(t2, t1)
@@ -69,7 +71,7 @@ class DOMINATED_BY(Relation):
             parent_ = parent_.parent
 
 
-class ONLY_CHILD_OF(Relation):
+class ONLY_CHILD_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         those_children = t2.children
@@ -83,7 +85,7 @@ class ONLY_CHILD_OF(Relation):
                 yield parent_
 
 
-class HAS_ONLY_CHILD(Relation):
+class HAS_ONLY_CHILD(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return ONLY_CHILD_OF.satisfies(t2, t1)
@@ -94,7 +96,7 @@ class HAS_ONLY_CHILD(Relation):
             yield t.children[0]
 
 
-class LAST_CHILD_OF_PARENT(Relation):
+class LAST_CHILD_OF_PARENT(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         those_children = t2.children
@@ -107,7 +109,7 @@ class LAST_CHILD_OF_PARENT(Relation):
             yield parent_
 
 
-class PARENT_OF_LAST_CHILD(Relation):
+class PARENT_OF_LAST_CHILD(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return LAST_CHILD_OF_PARENT.satisfies(t2, t1)
@@ -119,7 +121,7 @@ class PARENT_OF_LAST_CHILD(Relation):
             yield kid
 
 
-class LEFTMOST_CHILD_OF(Relation):
+class LEFTMOST_CHILD_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         those_children = t2.children
@@ -132,7 +134,7 @@ class LEFTMOST_CHILD_OF(Relation):
             yield parent_
 
 
-class HAS_LEFTMOST_CHILD(Relation):
+class HAS_LEFTMOST_CHILD(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return LEFTMOST_CHILD_OF.satisfies(t2, t1)
@@ -144,7 +146,7 @@ class HAS_LEFTMOST_CHILD(Relation):
             yield kid
 
 
-class HAS_RIGHTMOST_DESCENDANT(Relation):
+class HAS_RIGHTMOST_DESCENDANT(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         if t1.isLeaf():
@@ -160,7 +162,7 @@ class HAS_RIGHTMOST_DESCENDANT(Relation):
             kid = kid.lastChild()
 
 
-class RIGHTMOST_DESCENDANT_OF(Relation):
+class RIGHTMOST_DESCENDANT_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return HAS_RIGHTMOST_DESCENDANT.satisfies(t2, t1)
@@ -175,7 +177,7 @@ class RIGHTMOST_DESCENDANT_OF(Relation):
             parent_ = parent_.parent
 
 
-class HAS_LEFTMOST_DESCENDANT(Relation):
+class HAS_LEFTMOST_DESCENDANT(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         if t1.isLeaf():
@@ -191,7 +193,7 @@ class HAS_LEFTMOST_DESCENDANT(Relation):
             kid = kid.firstChild()
 
 
-class LEFTMOST_DESCENDANT_OF(Relation):
+class LEFTMOST_DESCENDANT_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return HAS_LEFTMOST_DESCENDANT.satisfies(t2, t1)
@@ -206,7 +208,7 @@ class LEFTMOST_DESCENDANT_OF(Relation):
             parent_ = parent_.parent
 
 
-class LEFT_SISTER_OF(Relation):
+class LEFT_SISTER_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         # t1 is t2 or t1 is root
@@ -232,7 +234,7 @@ class LEFT_SISTER_OF(Relation):
                 yield child
 
 
-class RIGHT_SISTER_OF(Relation):
+class RIGHT_SISTER_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return LEFT_SISTER_OF.satisfies(t2, t1)
@@ -247,7 +249,7 @@ class RIGHT_SISTER_OF(Relation):
                 yield child
 
 
-class IMMEDIATE_LEFT_SISTER_OF(Relation):
+class IMMEDIATE_LEFT_SISTER_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         # t1 is t2 or t1 is root
@@ -273,7 +275,7 @@ class IMMEDIATE_LEFT_SISTER_OF(Relation):
                 yield parent_.children[i + 1]
 
 
-class IMMEDIATE_RIGHT_SISTER_OF(Relation):
+class IMMEDIATE_RIGHT_SISTER_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return IMMEDIATE_LEFT_SISTER_OF.satisfies(t2, t1)
@@ -289,7 +291,7 @@ class IMMEDIATE_RIGHT_SISTER_OF(Relation):
                 yield parent_.children[i - 1]
 
 
-class PARENT_OF(Relation):
+class PARENT_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return t2.parent is t1
@@ -300,7 +302,7 @@ class PARENT_OF(Relation):
             yield child
 
 
-class CHILD_OF(Relation):
+class CHILD_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return PARENT_OF.satisfies(t2, t1)
@@ -312,7 +314,7 @@ class CHILD_OF(Relation):
             yield parent_
 
 
-class SISTER_OF(Relation):
+class SISTER_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         if t1 is t2 or t1.parent is None:
@@ -330,7 +332,7 @@ class SISTER_OF(Relation):
                 yield sister
 
 
-class EQUALS(Relation):
+class EQUALS(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return t1 is t2
@@ -340,7 +342,7 @@ class EQUALS(Relation):
         yield t
 
 
-class PARENT_EQUALS(Relation):
+class PARENT_EQUALS(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         if t1 is t2:
@@ -354,7 +356,7 @@ class PARENT_EQUALS(Relation):
             yield kid
 
 
-class UNARY_PATH_ANCESTOR_OF(Relation):
+class UNARY_PATH_ANCESTOR_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         if t1.isLeaf() or t1.numChildren() > 1:
@@ -374,7 +376,7 @@ class UNARY_PATH_ANCESTOR_OF(Relation):
             next = kid
 
 
-class UNARY_PATH_DESCEDANT_OF(Relation):
+class UNARY_PATH_DESCEDANT_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return UNARY_PATH_ANCESTOR_OF.satisfies(t2, t1)
@@ -387,13 +389,11 @@ class UNARY_PATH_DESCEDANT_OF(Relation):
             parent_ = parent_.parent
 
 
-class HEADS(Relation):
+class HEADS(AbstractRelation):
     hf = CollinsHeadFinder()
 
     @classmethod
-    def satisfies(
-        cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None
-    ) -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None) -> bool:
         if t2.isLeaf():
             return False
         elif t2.is_pre_terminal:
@@ -421,7 +421,7 @@ class HEADS(Relation):
             parent_ = parent_.parent
 
 
-class HEADED_BY(Relation):
+class HEADED_BY(AbstractRelation):
     hf = CollinsHeadFinder()
 
     @classmethod
@@ -441,13 +441,11 @@ class HEADED_BY(Relation):
                 head = headFinder.determineHead(head)
 
 
-class IMMEDIATELY_HEADS(Relation):
+class IMMEDIATELY_HEADS(AbstractRelation):
     hf = CollinsHeadFinder()
 
     @classmethod
-    def satisfies(
-        cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None
-    ) -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None) -> bool:
         if headFinder is None:
             headFinder = cls.hf
         return headFinder.determineHead(t2) is t1
@@ -464,13 +462,11 @@ class IMMEDIATELY_HEADS(Relation):
                 yield parent_
 
 
-class IMMEDIATELY_HEADED_BY(Relation):
+class IMMEDIATELY_HEADED_BY(AbstractRelation):
     hf = CollinsHeadFinder()
 
     @classmethod
-    def satisfies(
-        cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None
-    ) -> bool:
+    def satisfies(cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None) -> bool:
         return IMMEDIATELY_HEADS.satisfies(t2, t1, headFinder)
 
     @classmethod
@@ -486,7 +482,7 @@ class IMMEDIATELY_HEADED_BY(Relation):
             yield head
 
 
-class PRECEDES(Relation):
+class PRECEDES(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return t1.rightEdge() <= t2.leftEdge()
@@ -509,7 +505,7 @@ class PRECEDES(Relation):
             searchStack.extend(reversed(next.children))
 
 
-class IMMEDIATELY_PRECEDES(Relation):
+class IMMEDIATELY_PRECEDES(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return t1.rightEdge() == t2.leftEdge()
@@ -537,7 +533,7 @@ class IMMEDIATELY_PRECEDES(Relation):
             next = next.firstChild()
 
 
-class FOLLOWS(Relation):
+class FOLLOWS(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return t2.rightEdge() <= t1.leftEdge()
@@ -560,7 +556,7 @@ class FOLLOWS(Relation):
             searchStack.extend(reversed(next.children))
 
 
-class IMMEDIATELY_FOLLOWS(Relation):
+class IMMEDIATELY_FOLLOWS(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return t2.rightEdge() == t1.leftEdge()
@@ -588,7 +584,7 @@ class IMMEDIATELY_FOLLOWS(Relation):
             next = next.lastChild()
 
 
-class ANCESTOR_OF_LEAF(Relation):
+class ANCESTOR_OF_LEAF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return t1 is not t2 and t2.isLeaf() and DOMINATES.satisfies(t1, t2)
@@ -604,7 +600,7 @@ class ANCESTOR_OF_LEAF(Relation):
                 yield descendant
 
 
-class UNBROKEN_CATEGORY_DOMINATES(Relation):
+class UNBROKEN_CATEGORY_DOMINATES(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         # TODO passing in rel_arg is expansive, may be passing in node_descriptions is better?
@@ -612,45 +608,41 @@ class UNBROKEN_CATEGORY_DOMINATES(Relation):
             if kid is t2:
                 return True
             else:
-                if descs.satisfy(kid) and UNBROKEN_CATEGORY_DOMINATES.satisfies(kid, t2, descs):
+                if descs.satisfies(kid) and UNBROKEN_CATEGORY_DOMINATES.satisfies(kid, t2, descs):
                     return True
         return False
 
     @classmethod
-    def searchNodeIterator(
-        cls, t: "Tree", descs: "NodeDescriptions"
-    ) -> Generator["Tree", None, None]:
+    def searchNodeIterator(cls, t: "Tree", descs: "NodeDescriptions") -> Generator["Tree", None, None]:
         # TODO might need to implement a TregexMatcher class like java tregex
         # https://github.com/stanfordnlp/CoreNLP/blob/f8838d2639589f684cbaa58964cb29db5f23df7f/src/edu/stanford/nlp/trees/tregex/Relation.java#L1525
         for kid in t.children:
             # chain of length zero
             yield kid
             # chain of length longer than 0
-            if descs.satisfy(kid):
+            if descs.satisfies(kid):
                 for descendant in cls.searchNodeIterator(kid, descs):
                     yield descendant
 
 
-class UNBROKEN_CATEGORY_IS_DOMINATED_BY(Relation):
+class UNBROKEN_CATEGORY_IS_DOMINATED_BY(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         return UNBROKEN_CATEGORY_DOMINATES.satisfies(t2, t1, descs)
 
     @classmethod
-    def searchNodeIterator(
-        cls, t: "Tree", descs: "NodeDescriptions"
-    ) -> Generator["Tree", None, None]:
+    def searchNodeIterator(cls, t: "Tree", descs: "NodeDescriptions") -> Generator["Tree", None, None]:
         parent_ = t.parent
         while True:
             if parent_ is None:
                 break
             yield parent_
-            if not descs.satisfy(parent_):
+            if not descs.satisfies(parent_):
                 break
             parent_ = parent_.parent
 
 
-class UNBROKEN_CATEGORY_PRECEDES(Relation):
+class UNBROKEN_CATEGORY_PRECEDES(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         parent_ = t1.parent
@@ -671,40 +663,36 @@ class UNBROKEN_CATEGORY_PRECEDES(Relation):
         if immediate_follower is t2:
             return True
         else:
-            if descs.satisfy(immediate_follower) and UNBROKEN_CATEGORY_PRECEDES.satisfies(
+            if descs.satisfies(immediate_follower) and UNBROKEN_CATEGORY_PRECEDES.satisfies(
                 immediate_follower, t2, descs
             ):
                 return True
         return False
 
     @classmethod
-    def searchNodeIterator(
-        cls, t: "Tree", descs: "NodeDescriptions"
-    ) -> Generator["Tree", None, None]:
+    def searchNodeIterator(cls, t: "Tree", descs: "NodeDescriptions") -> Generator["Tree", None, None]:
         for immediate_follower in IMMEDIATELY_PRECEDES.searchNodeIterator(t):
             yield immediate_follower
-            if descs.satisfy(immediate_follower):
+            if descs.satisfies(immediate_follower):
                 for after_follower in cls.searchNodeIterator(immediate_follower, descs):
                     yield after_follower
 
 
-class UNBROKEN_CATEGORY_FOLLOWS(Relation):
+class UNBROKEN_CATEGORY_FOLLOWS(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", descs: "NodeDescriptions") -> bool:
         return UNBROKEN_CATEGORY_PRECEDES.satisfies(t2, t1, descs)
 
     @classmethod
-    def searchNodeIterator(
-        cls, t: "Tree", descs: "NodeDescriptions"
-    ) -> Generator["Tree", None, None]:
+    def searchNodeIterator(cls, t: "Tree", descs: "NodeDescriptions") -> Generator["Tree", None, None]:
         for immediate_precedent in IMMEDIATELY_FOLLOWS.searchNodeIterator(t):
             yield immediate_precedent
-            if descs.satisfy(immediate_precedent):
+            if descs.satisfies(immediate_precedent):
                 for before_precedent in cls.searchNodeIterator(immediate_precedent, descs):
                     yield before_precedent
 
 
-class PATTERN_SPLITTER(Relation):
+class PATTERN_SPLITTER(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
         return True
@@ -715,7 +703,7 @@ class PATTERN_SPLITTER(Relation):
         return root.preorder_iter()
 
 
-class ITH_CHILD_OF(Relation):
+class ITH_CHILD_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", child_num: int) -> bool:
         if child_num == 0:
@@ -741,13 +729,11 @@ class ITH_CHILD_OF(Relation):
         if abs(child_num) > parent_.numChildren():
             return
         kids = parent_.children
-        if (child_num > 0 and kids[child_num - 1] is t) or (
-            child_num < 0 and kids[child_num] is t
-        ):
+        if (child_num > 0 and kids[child_num - 1] is t) or (child_num < 0 and kids[child_num] is t):
             yield parent_
 
 
-class HAS_ITH_CHILD(Relation):
+class HAS_ITH_CHILD(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", child_num: int) -> bool:
         return ITH_CHILD_OF.satisfies(t2, t1, child_num)
@@ -766,7 +752,7 @@ class HAS_ITH_CHILD(Relation):
             yield t.children[child_num]
 
 
-class ANCESTOR_OF_ITH_LEAF(Relation):
+class ANCESTOR_OF_ITH_LEAF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", leaf_num: int) -> bool:
         if leaf_num == 0:
@@ -806,7 +792,7 @@ class ANCESTOR_OF_ITH_LEAF(Relation):
 
 
 class AbstractRelationData(ABC):
-    def __init__(self, string_repr: str, op: Relation):
+    def __init__(self, string_repr: str, op: type[AbstractRelation]):
         self.op = op
         self.string_repr = string_repr
 
@@ -817,67 +803,67 @@ class AbstractRelationData(ABC):
         self.string_repr = s
 
     @abstractmethod
-    def searchNodeIterator(self, this_node: "Tree"):
+    def searchNodeIterator(
+        self, t: "Tree", node_descriptions: "NodeDescriptions"
+    ) -> Generator["Tree", None, None]:
         raise NotImplementedError()
 
-    @abstractmethod
-    def satisfies(self, this_node: "Tree", that_node: "Tree"):
-        raise NotImplementedError()
+    # @abstractmethod
+    # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
+    #     raise NotImplementedError()
 
 
 class RelationData(AbstractRelationData):
-    def __init__(self, string_repr: str, op: Relation) -> None:
+    def __init__(self, string_repr: str, op: type[AbstractRelation]) -> None:
         super().__init__(string_repr, op)
-    
-    def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
-        return self.op.searchNodeIterator(this_node)
 
-    def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
-        return self.op.satisfies(this_node, that_node)
+    def searchNodeIterator(
+        self, t: "Tree", node_descriptions: "NodeDescriptions"
+    ) -> Generator["Tree", None, None]:
+        yield from filter(node_descriptions.satisfies, self.op.searchNodeIterator(t))
+
+    # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
+    #     return self.op.satisfies(this_node, that_node)
+
 
 class RelationWithStrArgData(AbstractRelationData):
     def __init__(
         self,
         string_repr: str,
-        op: Relation,
+        op: type[AbstractRelation],
         *,
         arg: "NodeDescriptions",
     ) -> None:
         super().__init__(string_repr, op)
         self.arg = arg
 
-    def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
-        return self.op.searchNodeIterator(this_node, self.arg)
+    def searchNodeIterator(
+        self, t: "Tree", node_descriptions: "NodeDescriptions"
+    ) -> Generator["Tree", None, None]:
+        yield from filter(node_descriptions.satisfies, self.op.searchNodeIterator(t, self.arg))
 
-    def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
-        return self.op.satisfies(this_node, that_node, self.arg)
+    # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
+    #     return self.op.satisfies(this_node, that_node, self.arg)
 
 
 class RelationWithNumArgData(AbstractRelationData):
     def __init__(
         self,
         string_repr: str,
-        op: Relation,
+        op: type[AbstractRelation],
         *,
         arg: int,
     ) -> None:
         super().__init__(string_repr, op)
         self.arg = arg
 
-    def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
-        return self.op.searchNodeIterator(this_node, self.arg)
+    def searchNodeIterator(
+        self, t: "Tree", node_descriptions: "NodeDescriptions"
+    ) -> Generator["Tree", None, None]:
+        yield from filter(node_descriptions.satisfies, self.op.searchNodeIterator(t, self.arg))
 
-    def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
-        return self.op.satisfies(this_node, that_node, self.arg)
+    # def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
+    #     return self.op.searchNodeIterator(this_node, self.arg)
 
-
-class MultiRelationData(RelationWithNumArgData):
-    def __init__(
-        self,
-        string_repr: str,
-        op: Relation,
-        *,
-        arg: int,
-    ) -> None:
-        super().__init__(string_repr, op, arg=arg)
-
+    # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
+    #     return self.op.satisfies(this_node, that_node, self.arg)
