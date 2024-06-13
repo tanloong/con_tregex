@@ -407,68 +407,6 @@ class Tree:
             root_ = root_.parent
         return root_
 
-    def iter_upto_root(self) -> Generator["Tree", None, None]:
-        """
-        iterate up the tree from the current node to the root node.
-
-        borrowed from anytree:
-        https://github.com/c0fec0de/anytree/blob/27ff97eed4c09b4f0eb9ae61b45dd30b794a135c/anytree/node/nodemixin.py#L294
-        """
-        node = self
-        while node.parent is not None:
-            yield node
-            node = node.parent
-
-    @property
-    def path(self):
-        """
-        return a path of nodes from root node down to `self`
-
-        borrowed from anytree:
-        https://github.com/c0fec0de/anytree/blob/27ff97eed4c09b4f0eb9ae61b45dd30b794a135c/anytree/node/nodemixin.py#L277
-        """
-        # use "reversed" because pyright complains about using "sorted"
-        # convert to tuple to ensure unchangabel hereafter
-        return tuple(reversed(list(self.iter_upto_root())))
-
-    def walk_to(self, other: "Tree") -> tuple[tuple["Tree"], "Tree", tuple["Tree"]]:
-        """
-        walk from `start` node to `end` node.
-
-        returns (upwards, common, downwards):
-            `upwards` is a list of nodes to go upward to.
-            `common` the nearest sharing ancestor of `start` and `end`.
-            `downwards` is a list of nodes to go downward to.
-
-        modified from anytree:
-        https://github.com/c0fec0de/anytree/blob/27ff97eed4c09b4f0eb9ae61b45dd30b794a135c/anytree/walker.py#L8
-        """
-        path_start = self.path
-        path_end = other.path
-        if self.getRoot() is not other.getRoot():
-            raise ValueError("start and end are not part of the same tree.")
-
-        # common
-        common = tuple(
-            node_start
-            for node_start, node_end in zip(path_start, path_end, strict=False)
-            if node_start is node_end
-        )
-        assert common[0] is self.getRoot()
-        len_common = len(common)
-
-        # upwards
-        if self is common[-1]:
-            upwards: tuple["Tree"] = tuple()  # type:ignore
-        else:
-            upwards: tuple["Tree"] = tuple(reversed(path_start[len_common:]))  # type:ignore
-        # down
-        if other is common[-1]:
-            down: tuple["Tree"] = tuple()  # type:ignore
-        else:
-            down: tuple["Tree"] = path_end[len_common:]  # type:ignore
-        return upwards, common[-1], down
-
     def left_sisters(self) -> list | None:
         sister_index_ = self.get_sister_index()
         is_not_the_first = sister_index_ is not None and sister_index_ > 0
