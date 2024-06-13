@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# -*- coding=utf-8 -*-
 
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from abstract_collins_head_finder import AbstractCollinsHeadFinder
 
@@ -169,7 +168,7 @@ class CollinsHeadFinder(AbstractCollinsHeadFinder):
             if prevLab == "CC" or prevLab == "CONJP":
                 newHeadIdx = headIdx - 2
                 t = daughterTrees[newHeadIdx]
-                while newHeadIdx >= 0 and t.is_pre_terminal and t.label in self.pennPunctTags:
+                while newHeadIdx >= 0 and t.is_preterminal and t.label in self.pennPunctTags:
                     newHeadIdx -= 1
                 if newHeadIdx >= 0:
                     headIdx = newHeadIdx

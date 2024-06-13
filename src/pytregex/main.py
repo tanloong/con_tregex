@@ -122,11 +122,12 @@ class TregexUI:
         )
 
         if self.verified_ifile_list is not None:
-            tree_string = ""
+            forests = []
             for ifile in self.verified_ifile_list:
                 logging.debug(f"Reading tree input from input {ifile}...")
-                with open(ifile, "r", encoding="utf-8") as f:
-                    tree_string += f.read()
+                with open(ifile, encoding="utf-8") as f:
+                    forests.append(f.read())
+            tree_string = "\n".join(forests)
         elif self.tree_string is not None:
             logging.debug("Reading tree input from stdin...")
             tree_string = self.tree_string
