@@ -330,7 +330,7 @@ class Tree:
 
     @classmethod
     def normalize(cls, text: str) -> str:
-        return text.replace("-LRB-", OPEN_PAREN).replace("-RRB-", CLOSE_PAREN)
+        return text.replace(OPEN_PAREN, "-LRB-").replace(CLOSE_PAREN, "-RRB-")
 
     @classmethod
     def fromstring(cls, string: str) -> Generator["Tree", None, None]:

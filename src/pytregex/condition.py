@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Generator
 
 from node_descriptions import NodeDescriptions
 from peekable import peekable
@@ -15,6 +15,10 @@ class AbstractCondition(ABC):
     # @abstractmethod
     # def match(self, these_nodes: List["Tree"], this_name: Optional[str]):
     #     pass
+    @abstractmethod
+    def __repr__(self):
+        raise NotImplementedError
+
     def satisfies(self, t: "Tree") -> bool:
         try:
             next(self.searchNodeIterator(t))
@@ -42,8 +46,12 @@ class Condition(AbstractCondition):
         # self.those_nodes = those_nodes
         # self.that_name = that_name
 
+    def __repr__(self):
+        return f"{self.relation_data} {self.node_descriptions}"
+
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
-        return self.relation_data.searchNodeIterator(t, self.node_descriptions)
+        for _ in self.relation_data.searchNodeIterator(t, self.node_descriptions):
+            yield t
 
     # def get_names(self) -> Generator[Optional[str], None, None]:
     #     yield self.that_name
@@ -79,10 +87,15 @@ class And(AbstractCondition):
     def __init__(self, conditions: list[AbstractCondition]):
         self.conditions = conditions
 
+    def __repr__(self):
+        return "{}".format(" ".join(str(c) for c in self.conditions))
+
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
-        candidates = (t for _ in range(1))
+        candidates = (t,)
         for condition in self.conditions:
-            candidates = (node for candidate in candidates for node in condition.searchNodeIterator(candidate))
+            candidates = tuple(
+                node for candidate in candidates for node in condition.searchNodeIterator(candidate)
+            )
         yield from candidates
 
     # def get_names(self) -> Generator[Optional[str], None, None]:
@@ -121,6 +134,9 @@ class And(AbstractCondition):
 class Or(AbstractCondition):
     def __init__(self, conditions: list[AbstractCondition]):
         self.conditions = conditions
+
+    def __repr__(self):
+        return "{}".format(" || ".join(str(c) for c in self.conditions))
 
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         for condition in self.conditions:
@@ -163,12 +179,16 @@ class Not(AbstractCondition):
     def __init__(self, condition: AbstractCondition):
         self.condition = condition
 
+    def __repr__(self):
+        return f"!{self.condition}"
+
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
-        g = self.condition.searchNodeIterator(t)
-        if peekable(g):
-            return
-        else:
+        try:
+            next(self.condition.searchNodeIterator(t))
+        except StopIteration:
             yield t
+        else:
+            return
 
     # def __init__(self, condition):
     #     self.condition = condition
@@ -199,6 +219,9 @@ class Not(AbstractCondition):
 class Opt(AbstractCondition):
     def __init__(self, condition: AbstractCondition):
         self.condition = condition
+
+    def __repr__(self):
+        return f"?{self.condition}"
 
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         g = self.condition.searchNodeIterator(t)

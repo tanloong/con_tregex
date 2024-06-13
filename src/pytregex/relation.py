@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from itertools import chain as _chain
-from typing import TYPE_CHECKING, Callable, Generator, Iterator, List, Optional
+from typing import TYPE_CHECKING, Generator, Iterator, List, Optional
 
 from collins_head_finder import CollinsHeadFinder
 
@@ -299,8 +299,7 @@ class PARENT_OF(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        for child in t.children:
-            yield child
+        yield from t.children
 
 
 class CHILD_OF(AbstractRelation):
@@ -353,8 +352,7 @@ class PARENT_EQUALS(AbstractRelation):
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         yield t
-        for kid in t.children:
-            yield kid
+        yield from t.children
 
 
 class UNARY_PATH_ANCESTOR_OF(AbstractRelation):
@@ -608,7 +606,9 @@ class UNBROKEN_CATEGORY_DOMINATES(AbstractRelation):
             if kid is t2:
                 return True
             else:
-                if descs.satisfies(kid) and UNBROKEN_CATEGORY_DOMINATES.satisfies(kid, t2, descs):
+                if descs._satisfies_ignore_condition(kid) and UNBROKEN_CATEGORY_DOMINATES.satisfies(
+                    kid, t2, descs
+                ):
                     return True
         return False
 
@@ -621,7 +621,7 @@ class UNBROKEN_CATEGORY_DOMINATES(AbstractRelation):
             # chain of length zero
             yield node
             # chain of length longer than 0
-            if descs.satisfies(node):
+            if descs._satisfies_ignore_condition(node):
                 iterator = _chain(node.children, iterator)
 
 
@@ -637,7 +637,7 @@ class UNBROKEN_CATEGORY_IS_DOMINATED_BY(AbstractRelation):
             if parent_ is None:
                 break
             yield parent_
-            if not descs.satisfies(parent_):
+            if not descs._satisfies_ignore_condition(parent_):
                 break
             parent_ = parent_.parent
 
@@ -663,7 +663,7 @@ class UNBROKEN_CATEGORY_PRECEDES(AbstractRelation):
         if immediate_follower is t2:
             return True
         else:
-            if descs.satisfies(immediate_follower) and UNBROKEN_CATEGORY_PRECEDES.satisfies(
+            if descs._satisfies_ignore_condition(immediate_follower) and UNBROKEN_CATEGORY_PRECEDES.satisfies(
                 immediate_follower, t2, descs
             ):
                 return True
@@ -674,7 +674,7 @@ class UNBROKEN_CATEGORY_PRECEDES(AbstractRelation):
         iterator: Iterator = IMMEDIATELY_PRECEDES.searchNodeIterator(t)
         while (node := next(iterator, None)) is not None:
             yield node
-            if descs.satisfies(node):
+            if descs._satisfies_ignore_condition(node):
                 iterator = _chain(IMMEDIATELY_PRECEDES.searchNodeIterator(node), iterator)
 
 
@@ -688,7 +688,7 @@ class UNBROKEN_CATEGORY_FOLLOWS(AbstractRelation):
         iterator: Iterator = IMMEDIATELY_FOLLOWS.searchNodeIterator(t)
         while (node := next(iterator, None)) is not None:
             yield node
-            if descs.satisfies(node):
+            if descs._satisfies_ignore_condition(node):
                 iterator = _chain(IMMEDIATELY_FOLLOWS.searchNodeIterator(node), iterator)
 
 
@@ -792,15 +792,12 @@ class ANCESTOR_OF_ITH_LEAF(AbstractRelation):
 
 
 class AbstractRelationData(ABC):
-    def __init__(self, string_repr: str, op: type[AbstractRelation]):
+    def __init__(self, op: type[AbstractRelation], symbol: str):
         self.op = op
-        self.string_repr = string_repr
+        self.__repr = symbol
 
     def __repr__(self) -> str:
-        return self.string_repr
-
-    def set_string_repr(self, s: str) -> None:
-        self.string_repr = s
+        return self.__repr
 
     @abstractmethod
     def searchNodeIterator(
@@ -814,13 +811,14 @@ class AbstractRelationData(ABC):
 
 
 class RelationData(AbstractRelationData):
-    def __init__(self, string_repr: str, op: type[AbstractRelation]) -> None:
-        super().__init__(string_repr, op)
+    def __init__(self, op: type[AbstractRelation], symbol: str) -> None:
+        super().__init__(op, symbol)
 
     def searchNodeIterator(
         self, t: "Tree", node_descriptions: "NodeDescriptions"
     ) -> Generator["Tree", None, None]:
-        yield from filter(node_descriptions.satisfies, self.op.searchNodeIterator(t))
+        for candidate in self.op.searchNodeIterator(t):
+            yield from node_descriptions.searchNodeIterator(candidate, recursive=False)
 
     # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
     #     return self.op.satisfies(this_node, that_node)
@@ -829,18 +827,19 @@ class RelationData(AbstractRelationData):
 class RelationWithStrArgData(AbstractRelationData):
     def __init__(
         self,
-        string_repr: str,
         op: type[AbstractRelation],
+        symbol: str,
         *,
         arg: "NodeDescriptions",
     ) -> None:
-        super().__init__(string_repr, op)
+        super().__init__(op, symbol)
         self.arg = arg
 
     def searchNodeIterator(
         self, t: "Tree", node_descriptions: "NodeDescriptions"
     ) -> Generator["Tree", None, None]:
-        yield from filter(node_descriptions.satisfies, self.op.searchNodeIterator(t, self.arg))
+        for candidate in self.op.searchNodeIterator(t, self.arg):
+            yield from node_descriptions.searchNodeIterator(candidate, recursive=False)
 
     # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
     #     return self.op.satisfies(this_node, that_node, self.arg)
@@ -849,18 +848,19 @@ class RelationWithStrArgData(AbstractRelationData):
 class RelationWithNumArgData(AbstractRelationData):
     def __init__(
         self,
-        string_repr: str,
         op: type[AbstractRelation],
+        symbol: str,
         *,
         arg: int,
     ) -> None:
-        super().__init__(string_repr, op)
+        super().__init__(op, symbol)
         self.arg = arg
 
     def searchNodeIterator(
         self, t: "Tree", node_descriptions: "NodeDescriptions"
     ) -> Generator["Tree", None, None]:
-        yield from filter(node_descriptions.satisfies, self.op.searchNodeIterator(t, self.arg))
+        for candidate in self.op.searchNodeIterator(t, self.arg):
+            yield from node_descriptions.searchNodeIterator(candidate, recursive=False)
 
     # def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
     #     return self.op.searchNodeIterator(this_node, self.arg)

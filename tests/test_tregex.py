@@ -6,8 +6,8 @@
 
 from typing import Union
 
-from pytregex.tregex import TregexPattern
 from pytregex.tree import Tree
+from pytregex.tregex import TregexPattern
 
 from .base_tmpl import BaseTmpl
 from .base_tmpl import tree as tree_string
@@ -220,6 +220,7 @@ class TestTregex(BaseTmpl):
         self.run_test(dominated_pattern, "(foo (a (b (bar 1))))")
         self.run_test(dominated_pattern, "(foo (a (b 1) (bar 2)))")
         self.run_test(dominated_pattern, "(foo (a (b 1) (c 2) (bar 3)))")
+        self.run_test(dominated_pattern, "(a (foo bar))")
         self.run_test(dominated_pattern, "(bar (foo 1))", "(foo 1)")
         self.run_test(dominated_pattern, "(bar (a (foo 1)))")
         self.run_test(dominated_pattern, "(bar (foo 1) (foo 2))", "(foo 1)", "(foo 2)")

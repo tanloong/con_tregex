@@ -8,16 +8,12 @@ from node_descriptions import (
     NODE_ID,
     NODE_REGEX,
     NODE_ROOT,
-    NamedNodes,
     NodeDescription,
     NodeDescriptions,
 )
 from ply import lex, yacc
 from relation import *
 from tree import Tree
-
-logging.basicConfig(level=logging.DEBUG, filemode="w", format="%(filename)10s:%(lineno)4d:%(message)s")
-log = logging.getLogger()
 
 
 class TregexPattern:
@@ -134,8 +130,8 @@ class TregexPattern:
         parser = self.make_parser(trees)
         self._reset_lexer_state()
 
-        # return parser.parse(lexer=self.lexer, debug=log)
-        return parser.parse(lexer=self.lexer)
+        return parser.parse(lexer=self.lexer, debug=(logging.getLogger().level == logging.DEBUG))
+        # return parser.parse(lexer=self.lexer)
 
     def get_nodes(self, name: str) -> List[Tree]:
         try:
@@ -161,7 +157,6 @@ class TregexPattern:
             # keep consistency with Stanford Tregex
             # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
             # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
-
             # shift on shift/reduce conflicts:
             # - node_descriptions_list -> node_descriptions_list node_descriptions .
             #  + condition -> . ! condition
@@ -242,7 +237,6 @@ class TregexPattern:
             node_descriptions : '!' node_descriptions
             """
             p[2].toggle_negated()
-            p[2].set_string_repr(f"!{p[2].string_repr}")
 
             p[0] = p[2]
 
@@ -251,7 +245,6 @@ class TregexPattern:
             node_descriptions : '@' node_descriptions
             """
             p[2].set_use_basic_cat()
-            p[2].set_string_repr(f"@{p[2].string_repr}")
 
             p[0] = p[2]
 
@@ -266,7 +259,6 @@ class TregexPattern:
             node_descriptions : node_descriptions OR_NODE node_description
             """
             p[1].add_description(p[3])
-            p[1].set_string_repr(f"{p[1].string_repr}{p[2]}{p[3].value}")
 
             p[0] = p[1]
 
@@ -309,16 +301,16 @@ class TregexPattern:
             """
             relation_data : RELATION
             """
-            string_repr = p[1]
-            p[0] = RelationData(string_repr, self.RELATION_MAP[string_repr])
+            symbol = p[1]
+            p[0] = RelationData(self.RELATION_MAP[symbol], symbol)
 
         # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_node_descriptions_rparen(p):
             """
             relation_data : REL_W_STR_ARG '(' node_descriptions ')'
             """
-            string_repr = p[1]
-            p[0] = RelationWithStrArgData(string_repr, self.REL_W_STR_ARG_MAP[string_repr], arg=p[3])
+            symbol = p[1]
+            p[0] = RelationWithStrArgData(self.REL_W_STR_ARG_MAP[symbol], symbol, arg=p[3])
 
         # 2.3 REL_W_NUM_ARG
         def p_relation_number(p):
@@ -326,11 +318,11 @@ class TregexPattern:
             relation_data : RELATION NUMBER
             """
             rel_key, num = p[1:]
-            string_repr = f"{rel_key}{num}"
+            symbol = f"{rel_key}{num}"
 
             if rel_key.endswith("-"):
                 num = f"-{num}"
-            p[0] = RelationWithNumArgData(string_repr, self.REL_W_NUM_ARG_MAP[rel_key], arg=int(num))
+            p[0] = RelationWithNumArgData(self.REL_W_NUM_ARG_MAP[rel_key], symbol, arg=int(num))
 
         def p_not_condition(p):
             """
@@ -532,4 +524,4 @@ class TregexPattern:
                 msg = "Parsing Error at EOF"
             raise SystemExit(msg)
 
-        return yacc.yacc(debug=True, start="nodes")
+        return yacc.yacc(debug=False, start="nodes")

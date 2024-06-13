@@ -8,6 +8,7 @@ import sys
 from typing import List, Optional, Tuple
 
 from tregex import TregexPattern
+from utils import stdout
 
 # For all the procedures in TregexUI, return a tuple as the result The first
 # element bool indicates whether the procedure succeeds The second element is
@@ -34,6 +35,13 @@ class TregexUI:
             dest="is_stdin",
             default=False,
             help="read tree input from stdin",
+        )
+        args_parser.add_argument(
+            "-C",
+            action="store_true",
+            dest="is_C",
+            default=False,
+            help="suppresses printing of matches, so only the number of matches is printed.",
         )
         args_parser.add_argument(
             "-h",
@@ -94,8 +102,9 @@ class TregexUI:
             if ipath_list:
                 return (
                     False,
-                    "Input files are unaccepted when reading tree input from stdin: \n\n{}"
-                    .format("\n".join(ipath_list)),
+                    "Input files are unaccepted when reading tree input from stdin: \n\n{}".format(
+                        "\n".join(ipath_list)
+                    ),
                 )
             self.tree_string = sys.stdin.read()
         else:
@@ -143,11 +152,14 @@ class TregexUI:
             for handle in self.options.handles:
                 handled_nodes = pattern.get_nodes(handle)
                 for node in handled_nodes:
-                    sys.stdout.write(f"{node}\n")
+                    stdout(f"{node}\n")
         else:
+            if self.options.is_C:
+                stdout(f"{len(matches)}\n")
+                return True, None
             logging.debug("Printing matches...")
             for m in matches:
-                sys.stdout.write(f"{m}\n")
+                stdout(f"{m}\n")
         logging.info(f"There were {len(matches)} matches in total.")
 
         return True, None
