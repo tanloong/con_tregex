@@ -1,5 +1,7 @@
 import logging
 import re
+import sys
+import warnings
 from typing import Dict, List, Never
 
 from condition import And, Condition, Not, Opt, Or
@@ -236,7 +238,9 @@ class TregexPattern:
             """
             node_descriptions : '!' node_descriptions
             """
-            p[2].negate()
+            if not p[2].negate():
+                # Use warnings.warn instead of logging.warning to suppress repetitions
+                warnings.warn("repeated '!'", category=SyntaxWarning, stacklevel=1)
 
             p[0] = p[2]
 
@@ -244,7 +248,9 @@ class TregexPattern:
             """
             node_descriptions : '@' node_descriptions
             """
-            p[2].enable_basic_cat()
+            if not p[2].enable_basic_cat():
+                # Use warnings.warn instead of logging.warning to suppress repetitions
+                warnings.warn("repeated '@'", category=SyntaxWarning, stacklevel=1)
 
             p[0] = p[2]
 

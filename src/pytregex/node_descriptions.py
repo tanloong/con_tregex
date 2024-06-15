@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import logging
 import re
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
@@ -69,17 +68,19 @@ class NodeDescriptions:
     def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
 
-    def negate(self) -> None:
+    def negate(self) -> bool:
         if self.is_negated:
-            logging.warning("Warning: repeated '!'")
-            return
-        self.is_negated = True
+            return False
 
-    def enable_basic_cat(self) -> None:
+        self.is_negated = True
+        return True
+
+    def enable_basic_cat(self) -> bool:
         if self.use_basic_cat:
-            logging.warning("Warning: repeated '@'")
-            return
+            return False
+
         self.use_basic_cat = True
+        return True
 
     def _satisfies_ignore_condition(self, t: Tree):
         return any(
