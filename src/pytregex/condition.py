@@ -291,7 +291,7 @@ class And(AbstractCondition):
         self.conditions = list(conds)
 
     def __repr__(self):
-        return "{}".format(" ".join(str(c) for c in self.conditions))
+        return " ".join(map(str, self.conditions))
 
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         candidates = (t,)
@@ -339,7 +339,7 @@ class Or(AbstractCondition):
         self.conditions = list(conds)
 
     def __repr__(self):
-        return "{}".format(" || ".join(str(c) for c in self.conditions))
+        return " || ".join(map(str, self.conditions))
 
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         for condition in self.conditions:
@@ -428,10 +428,13 @@ class Opt(AbstractCondition):
 
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         g = self.condition.searchNodeIterator(t)
-        if peekable(g):
-            yield from g
-        else:
+        try:
+            node = next(g)
+        except StopIteration:
             yield t
+        else:
+            yield node
+            yield from g
 
     # def get_names(self) -> Generator[Optional[str], None, None]:
     #     for name in self.condition.get_names():
