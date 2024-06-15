@@ -14,9 +14,11 @@ from peekable import peekable
 if TYPE_CHECKING:
     from .head_finder import HeadFinder
 
-CLOSE_PAREN = ")"
-SPACE_SEPARATOR = " "
-OPEN_PAREN = "("
+LRB: str = "("
+RRB: str = ")"
+LRB_ESCAPE: str = "-LRB-"
+RRB_ESCAPE: str = "-RRB-"
+SPACE_SEPARATOR: str = " "
 
 
 class Tree:
@@ -48,13 +50,13 @@ class Tree:
                     continue
                 if len(node.children) == 0:
                     if node.label is not None:
-                        buf.write(self.normalize(node.label))
+                        buf.write(self.escape(node.label))
                     continue
 
-                buf.write(OPEN_PAREN)
+                buf.write(LRB)
                 if node.label is not None:
-                    buf.write(self.normalize(node.label))
-                stack.append(CLOSE_PAREN)
+                    buf.write(self.escape(node.label))
+                stack.append(RRB)
 
                 for child in reversed(node.children):
                     stack.append(child)
@@ -329,17 +331,21 @@ class Tree:
         self.children.append(node)
 
     @classmethod
-    def normalize(cls, text: str) -> str:
-        return text.replace(OPEN_PAREN, "-LRB-").replace(CLOSE_PAREN, "-RRB-")
+    def normalize(cls, s: str) -> str:
+        return s.replace(RRB_ESCAPE, RRB).replace(LRB_ESCAPE, LRB)
 
     @classmethod
-    def fromstring(cls, string: str) -> Generator["Tree", None, None]:
+    def escape(cls, s: str) -> str:
+        return s.replace(RRB, RRB_ESCAPE).replace(LRB, LRB_ESCAPE)
+
+    @classmethod
+    def fromstring(cls, s: str) -> Generator["Tree", None, None]:
         # TODO need more logging msg to indicate whether "a b c d" or "(a b c d)" is parsed correctly
         # translated from CoreNLP's PennTreeReader
         # https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/PennTreeReader.java#L144
 
-        open_pattern = re.escape(OPEN_PAREN)
-        close_pattern = re.escape(CLOSE_PAREN)
+        open_pattern = re.escape(LRB)
+        close_pattern = re.escape(RRB)
 
         # store `token_re` to avoid repeated regex compiling
         attr = "token_re"
@@ -352,12 +358,12 @@ class Tree:
         stack_parent: deque["Tree"] = deque()
         current_tree = None
 
-        token_g = peekable(token_re.findall(string))
+        token_g = peekable(token_re.findall(s))
         while (token := next(token_g, None)) is not None:
-            if token == OPEN_PAREN:
-                label = None if token_g.peek() == OPEN_PAREN else next(token_g, None)
+            if token == LRB:
+                label = None if token_g.peek() == LRB else next(token_g, None)
 
-                if label == CLOSE_PAREN:
+                if label == RRB:
                     continue
 
                 new_tree = cls(label)
@@ -369,7 +375,7 @@ class Tree:
                     stack_parent.append(current_tree)
 
                 current_tree = new_tree
-            elif token == CLOSE_PAREN:
+            elif token == RRB:
                 if len(stack_parent) == 0:
                     raise ValueError(
                         "failed to build tree from string with extra non-matching right parentheses"

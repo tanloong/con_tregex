@@ -1666,6 +1666,12 @@ class TestTregex(BaseTmpl):
     def test_negated_exclusion(self):
         self.run_test("A !> A", "(A (A)) (A)", "(A (A))", "(A)")
 
+    def test_normalize_escape(self):
+        # normalize '-LRB-' to '(' when converting a treeString to a Tree
+        # escape '(' to '-LRB-' when printing a Tree
+        self.run_test(r"/\(/ < B", "(A (-LRB- B))", "(-LRB- B)")
+        self.run_test(r"/\)/ < B", "(A (-RRB- B))", "(-RRB- B)")
+
     def run_test(
         self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str
     ):
