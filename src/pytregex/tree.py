@@ -112,6 +112,7 @@ class Tree:
     def __len__(self) -> int:
         return len(self.children)
 
+    @property
     def basic_category(self) -> str | None:
         if self.label is None:
             return None
