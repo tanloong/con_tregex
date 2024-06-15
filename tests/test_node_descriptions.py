@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from pytregex.condition import Condition
-from pytregex.node_descriptions import NODE_ID, NODE_REGEX, NodeDescription, NodeDescriptions
+from pytregex.condition import NODE_ID, NODE_REGEX, Condition, NodeDescription, NodeDescriptions
 from pytregex.relation import *
 
 from .base_tmpl import BaseTmpl

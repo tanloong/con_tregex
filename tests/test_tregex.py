@@ -680,9 +680,7 @@ class TestTregex(BaseTmpl):
         self.run_test(
             "(foo << bar) : (foo << baz)", "(a (foo (bar 1)) (foo (baz 2)))", "(foo (bar 1))"
         )
-        self.run_test(
-            "(foo << bar) : (foo << baz)", "(a (foo (bar 1)) (foo (baz 2)))", "(foo (bar 1))"
-        )
+        self.run_test("(foo << ban) $++ (foo << baz)", "(a (foo (bar 1)) (foo (baz 2)))")
         self.run_test("(foo << bar) == (foo << baz)", "(a (foo (bar)) (foo (baz)))")
         self.run_test(
             "(foo << bar) : (foo << baz)", "(a (foo (bar) (baz)))", "(foo (bar) (baz))"

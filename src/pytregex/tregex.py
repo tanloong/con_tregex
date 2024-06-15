@@ -1,17 +1,21 @@
 import logging
 import re
-import sys
 import warnings
 from typing import Dict, List, Never
 
-from condition import And, Condition, Not, Opt, Or
-from node_descriptions import (
+from condition import (
     NODE_ANY,
     NODE_ID,
     NODE_REGEX,
     NODE_ROOT,
+    AbstractCondition,
+    And,
+    Condition,
     NodeDescription,
     NodeDescriptions,
+    Not,
+    Opt,
+    Or,
 )
 from ply import lex, yacc
 from relation import *
@@ -366,7 +370,7 @@ class TregexPattern:
             """
             and_conditions : condition %prec IMAGINE
             """
-            p[0] = And([p[1]])
+            p[0] = And(p[1])
 
         def p_and_conditions_condition(p):
             """
@@ -399,27 +403,27 @@ class TregexPattern:
             rel_op = HAS_ITH_CHILD
             node_descriptions_list = p[3]
 
-            conditions = []
+            conditions: list[AbstractCondition] = []
             i = -1
             for i, node_descriptions in enumerate(node_descriptions_list, 1):
-                multi_relation_data = RelationWithNumArgData(rel_key, rel_op, arg=i)
+                multi_relation_data = RelationWithNumArgData(rel_op, rel_key, arg=i)
                 conditions.append(
                     Condition(relation_data=multi_relation_data, node_descriptions=node_descriptions)
                 )
 
-            multi_relation_data = RelationWithNumArgData(rel_key, rel_op, arg=i + 1)
+            multi_relation_data = RelationWithNumArgData(rel_op, rel_key, arg=i + 1)
             node_descriptions = NodeDescriptions([NodeDescription(NODE_ANY, self.t_BLANK)])
             conditions.append(
                 Not(Condition(relation_data=multi_relation_data, node_descriptions=node_descriptions))
             )
 
-            p[0] = And(conditions)
+            p[0] = And(*conditions)
 
         def p_and_conditions_and_conditions_multi_relation(p):
             """
             and_conditions : and_conditions and_conditions_multi_relation
             """
-            p[0] = And([p[1], p[2]])
+            p[0] = And(p[1], p[2])
 
         def p_and_conditions_multi_relation(p):
             """
@@ -449,7 +453,7 @@ class TregexPattern:
             """
             or_conditions : and_conditions OR_REL and_conditions
             """
-            p[0] = Or([p[1], p[3]])
+            p[0] = Or(p[1], p[3])
 
         def p_or_conditions_or_rel_and_conditions(p):
             """

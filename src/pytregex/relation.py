@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Generator, Iterator, List, Optional
 from collins_head_finder import CollinsHeadFinder
 
 if TYPE_CHECKING:
+    from condition import NodeDescriptions
     from head_finder import HeadFinder
-    from node_descriptions import NodeDescriptions
     from tree import Tree
 
 # reference: https://nlp.stanford.edu/nlp/javadoc/javanlp-3.5.0/edu/stanford/nlp/trees/tregex/TregexPattern.html
