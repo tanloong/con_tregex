@@ -116,22 +116,22 @@ class TestTree(BaseTmpl):
         self.assertFalse(tree.isLeaf())
 
     def test_left_sisters(self):
-        self.assertIsNone(self.tree[0].left_sisters, None)
-        self.assertEqual(self.tree[0, 1, 1].left_sisters, self.tree[0, 1][:1])
+        self.assertIsNone(self.tree[0].left_sisters())
+        self.assertEqual(self.tree[0, 1, 1].left_sisters(), self.tree[0, 1][:1])
 
     def test_right_sisters(self):
-        self.assertIsNone(self.tree[0].right_sisters, None)
-        self.assertEqual(self.tree[0, 1, 0].right_sisters, self.tree[0, 1][1:])
+        self.assertIsNone(self.tree[0].right_sisters(), None)
+        self.assertEqual(self.tree[0, 1, 0].right_sisters(), self.tree[0, 1][1:])
 
     def test_ispreterminal(self):
         tree = Tree()
-        self.assertFalse(tree.is_preterminal)
+        self.assertFalse(tree.is_preterminal())
 
         tree.children.append(Tree())
-        self.assertTrue(tree.is_preterminal)
+        self.assertTrue(tree.is_preterminal())
 
         tree.children.append(Tree())
-        self.assertFalse(tree.is_preterminal)
+        self.assertFalse(tree.is_preterminal())
 
     def test_tostring(self):
         tree = next(Tree.fromstring(self.tree_string))
