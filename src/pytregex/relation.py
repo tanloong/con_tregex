@@ -414,9 +414,11 @@ class HEADS(AbstractRelation):
     ) -> Generator["Tree", None, None]:
         if headFinder is None:
             headFinder = cls.hf
+
         parent_ = t.parent
         while parent_ is not None and headFinder.determineHead(parent_) is t:
             yield parent_
+            t = parent_
             parent_ = parent_.parent
 
 
