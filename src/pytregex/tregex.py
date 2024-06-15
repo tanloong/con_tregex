@@ -136,10 +136,10 @@ class TregexPattern:
     def get_nodes(self, name: str) -> List[Tree]:
         try:
             handled_nodes = self.backrefs_map[name]
-        except KeyError:
+        except KeyError as e:
             raise SystemExit(
-                f'Error!!  There is no matched node "{name}"!  Did you specify such a' " label in the pattern?"
-            )
+                f'Error!!  There is no matched node "{name}"!  Did you specify such a label in the pattern?'
+            ) from e
         else:
             return handled_nodes
 
@@ -236,7 +236,7 @@ class TregexPattern:
             """
             node_descriptions : '!' node_descriptions
             """
-            p[2].toggle_negated()
+            p[2].negate()
 
             p[0] = p[2]
 
@@ -244,7 +244,7 @@ class TregexPattern:
             """
             node_descriptions : '@' node_descriptions
             """
-            p[2].set_use_basic_cat()
+            p[2].enable_basic_cat()
 
             p[0] = p[2]
 
@@ -518,10 +518,10 @@ class TregexPattern:
             p[0] = nodes
 
         def p_error(p) -> Never:
-            if p:
-                msg = f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token '{p.value}'"
-            else:
+            if p is None:
                 msg = "Parsing Error at EOF"
+            else:
+                msg = f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token '{p.value}'"
             raise SystemExit(msg)
 
         return yacc.yacc(debug=False, start="nodes")

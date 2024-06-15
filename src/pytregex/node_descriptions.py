@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
+import logging
 import re
 from abc import ABC, abstractmethod
-from collections import namedtuple
-from typing import TYPE_CHECKING, Callable, Generator, Iterable, Iterator, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
 
-from relation import AbstractRelation
 from tree import Tree
 
 if TYPE_CHECKING:
@@ -29,6 +28,9 @@ class NodeDescription(NamedTuple):
     op: type["NODE_OP"]
     value: str
 
+    def __repr__(self) -> str:
+        return self.value
+
 
 class NodeDescriptions:
     def __init__(
@@ -43,14 +45,17 @@ class NodeDescriptions:
         self.use_basic_cat = use_basic_cat
 
         self.name = None
-        self.__repr = "".join(desc.value for desc in self.descriptions)
         self.condition: "AbstractCondition" | None = None
 
     def __iter__(self) -> Iterator[NodeDescription]:
         return iter(self.descriptions)
 
     def __repr__(self) -> str:
-        return self.__repr
+        prefix = f"{'!' if self.is_negated else ''}{'@' if self.use_basic_cat else ''}"
+        ret = f"{prefix}{'|'.join(map(str, self.descriptions))}"
+        if self.condition is not None:
+            ret = f"({ret} {self.condition})"
+        return ret
 
     def has_name(self) -> bool:
         return self.name is not None
@@ -60,20 +65,21 @@ class NodeDescriptions:
 
     def set_condition(self, condition: "AbstractCondition") -> None:
         self.condition = condition
-        self.__repr = "({} {})".format("".join(desc.value for desc in self.descriptions), str(condition))
 
     def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
 
-        self.__repr = f"{self.__repr}|{other_description.value}"
+    def negate(self) -> None:
+        if self.is_negated:
+            logging.warning("Warning: repeated '!'")
+            return
+        self.is_negated = True
 
-    def toggle_negated(self) -> None:
-        self.is_negated = not self.is_negated
-        self.__repr = f"!{self.__repr}"
-
-    def set_use_basic_cat(self) -> None:
+    def enable_basic_cat(self) -> None:
+        if self.use_basic_cat:
+            logging.warning("Warning: repeated '@'")
+            return
         self.use_basic_cat = True
-        self.__repr = f"@{self.__repr}"
 
     def _satisfies_ignore_condition(self, t: Tree):
         return any(
