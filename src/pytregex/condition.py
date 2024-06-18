@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
 
 if TYPE_CHECKING:
-    from relation import AbstractRelationData
-    from tree import Tree
+    from pytregex.relation import AbstractRelationData
+    from pytregex.tree import Tree
 
 
 class NamedNodes:

@@ -18,19 +18,13 @@ class TestTregex(BaseTmpl):
         return super().setUp()
 
     def test_JoãoSilva(self):
-        tregex1 = TregexPattern(
-            "PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))"
-        )
+        tregex1 = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))")
         tregex2 = TregexPattern(
             "PNT=p >>- (/(.+)/#1%var=l >, (__=t <- (__=r <, /(.+)/#1%var=m <- (__ <, CONJ <-"
             " /(.+)/#1%var=z))))"
         )
-        tregex3 = TregexPattern(
-            "PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))"
-        )
-        tree_string = (
-            "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
-        )
+        tregex3 = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))")
+        tree_string = "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
 
         self.assertTrue(tregex1.findall(tree_string))
         # self.assertTrue(tregex2.findall(tree_string))
@@ -84,9 +78,7 @@ class TestTregex(BaseTmpl):
         self.run_test("/.*/ >2 bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(4)")
 
         # A is the -ith child of B
-        self.run_test(
-            "/.*/ >-1 root", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(b (baz 5))"
-        )
+        self.run_test("/.*/ >-1 root", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(b (baz 5))")
         self.run_test("/.*/ >-1 a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
         self.run_test("/.*/ >-2 a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)")
         self.run_test("/.*/ >-1 foo", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(2)")
@@ -174,9 +166,7 @@ class TestTregex(BaseTmpl):
         self.run_test(dominates_pattern, "(foo (a (bar 1)))", "(foo (a (bar 1)))")
         self.run_test(dominates_pattern, "(foo (a (b (bar 1))))", "(foo (a (b (bar 1))))")
         self.run_test(dominates_pattern, "(foo (a (b 1) (bar 2)))", "(foo (a (b 1) (bar 2)))")
-        self.run_test(
-            dominates_pattern, "(foo (a (b 1) (c 2) (bar 3)))", "(foo (a (b 1) (c 2) (bar 3)))"
-        )
+        self.run_test(dominates_pattern, "(foo (a (b 1) (c 2) (bar 3)))", "(foo (a (b 1) (c 2) (bar 3)))")
         self.run_test(dominates_pattern, "(foo (baz 1))")
         self.run_test(dominates_pattern, "(a (foo (bar 1)))", "(foo (bar 1))")
         self.run_test(dominates_pattern, "(a (foo (baz (bar 1))))", "(foo (baz (bar 1)))")
@@ -288,13 +278,9 @@ class TestTregex(BaseTmpl):
         self.run_test(pattern, "(a (foo 1) (baz 2) (bar 3))")
         self.run_test(pattern, "(a (bar (foo 1)) (baz 2))")
         self.run_test(pattern, "(a (bar 1) (baz (foo 2)))", "(bar 1)", "(1)")
-        self.run_test(
-            pattern, "(a (bar 1) (baz 2) (bif (foo 3)))", "(bar 1)", "(1)", "(baz 2)", "(2)"
-        )
+        self.run_test(pattern, "(a (bar 1) (baz 2) (bif (foo 3)))", "(bar 1)", "(1)", "(baz 2)", "(2)")
         self.run_test(pattern, "(a (bar (foo 1)) (baz 2) (bif 3))")
-        self.run_test(
-            pattern, "(a (bar 1) (baz 2) (foo (bif 3)))", "(bar 1)", "(1)", "(baz 2)", "(2)"
-        )
+        self.run_test(pattern, "(a (bar 1) (baz 2) (foo (bif 3)))", "(bar 1)", "(1)", "(baz 2)", "(2)")
         self.run_test(pattern, "(a (bar 1) (foo (bif 2)) (baz 3))", "(bar 1)", "(1)")
 
         # follows
@@ -307,13 +293,9 @@ class TestTregex(BaseTmpl):
         self.run_test(pattern, "(a (bar (foo 1)) (baz 2))", "(baz 2)", "(2)")
         self.run_test(pattern, "(a (bar 1) (baz (foo 2)))")
         self.run_test(pattern, "(a (bar 1) (baz 2) (bif (foo 3)))")
-        self.run_test(
-            pattern, "(a (bar (foo 1)) (baz 2) (bif 3))", "(baz 2)", "(2)", "(bif 3)", "(3)"
-        )
+        self.run_test(pattern, "(a (bar (foo 1)) (baz 2) (bif 3))", "(baz 2)", "(2)", "(bif 3)", "(3)")
         self.run_test(pattern, "(a (bar 1) (baz 2) (foo (bif 3)))")
-        self.run_test(
-            pattern, "(a (foo (bif 1)) (bar 2) (baz 3))", "(bar 2)", "(2)", "(baz 3)", "(3)"
-        )
+        self.run_test(pattern, "(a (foo (bif 1)) (bar 2) (baz 3))", "(bar 2)", "(2)", "(baz 3)", "(3)")
         self.run_test(pattern, "(a (bar 1) (foo (bif 2)) (baz 3))", "(baz 3)", "(3)")
 
     def test_immediate_precedes_follows(self):
@@ -338,13 +320,9 @@ class TestTregex(BaseTmpl):
             "(baz 3)",
             "(3)",
         )
-        self.run_test(
-            pattern, "(a (bar 1) (foo 2) (foo 3) (baz 4))", "(bar 1)", "(1)", "(foo 2)", "(2)"
-        )
+        self.run_test(pattern, "(a (bar 1) (foo 2) (foo 3) (baz 4))", "(bar 1)", "(1)", "(foo 2)", "(2)")
         self.run_test(pattern, "(a (b (c 1) (d 2)) (foo))", "(b (c 1) (d 2))", "(d 2)", "(2)")
-        self.run_test(
-            pattern, "(a (b (c 1) (d 2)) (bar (foo 3)))", "(b (c 1) (d 2))", "(d 2)", "(2)"
-        )
+        self.run_test(pattern, "(a (b (c 1) (d 2)) (bar (foo 3)))", "(b (c 1) (d 2))", "(d 2)", "(2)")
         self.run_test(pattern, "(a (b (c 1) (d 2)) (bar (baz 3) (foo 4)))", "(baz 3)", "(3)")
         self.run_test(pattern, "(a (b (c 1) (d 2)) (bar (baz 2 3) (foo 4)))", "(baz 2 3)", "(3)")
 
@@ -370,13 +348,9 @@ class TestTregex(BaseTmpl):
             "(bif 5)",
             "(5)",
         )
-        self.run_test(
-            pattern, "(a (bar 1) (foo 2) (foo 3) (baz 4))", "(foo 3)", "(3)", "(baz 4)", "(4)"
-        )
+        self.run_test(pattern, "(a (bar 1) (foo 2) (foo 3) (baz 4))", "(foo 3)", "(3)", "(baz 4)", "(4)")
         self.run_test(pattern, "(a (foo) (b (c 1) (d 2)))", "(b (c 1) (d 2))", "(c 1)", "(1)")
-        self.run_test(
-            pattern, "(a (bar (foo 3)) (b (c 1) (d 2)))", "(b (c 1) (d 2))", "(c 1)", "(1)"
-        )
+        self.run_test(pattern, "(a (bar (foo 3)) (b (c 1) (d 2)))", "(b (c 1) (d 2))", "(c 1)", "(1)")
         self.run_test(
             pattern,
             "(a (bar (baz 3) (foo 4)) (b (c 1) (d 2)))",
@@ -402,9 +376,7 @@ class TestTregex(BaseTmpl):
             "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))",
             "(a (foo 1 2) (bar 3 4))",
         )
-        self.run_test(
-            "/.*/ <<, baz", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(b (baz 5))"
-        )
+        self.run_test("/.*/ <<, baz", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(b (baz 5))")
 
         # B rightmost descendant of A
         self.run_test("/.*/ <<- /1/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
@@ -424,9 +396,7 @@ class TestTregex(BaseTmpl):
             "(foo 1 2)",
             "(1)",
         )
-        self.run_test(
-            "/.*/ >>, a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)", "(1)"
-        )
+        self.run_test("/.*/ >>, a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(foo 1 2)", "(1)")
         self.run_test("/.*/ >>, bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(3)")
 
         # A rightmost descendant of B
@@ -437,9 +407,7 @@ class TestTregex(BaseTmpl):
             "(baz 5)",
             "(5)",
         )
-        self.run_test(
-            "/.*/ >>- a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)", "(4)"
-        )
+        self.run_test("/.*/ >>- a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)", "(4)")
         self.run_test("/.*/ >>- /1/", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))")
 
     def test_first_last_child(self):
@@ -454,9 +422,7 @@ class TestTregex(BaseTmpl):
         self.run_test("/.*/ >, bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(3)")
 
         # A is the last child of B
-        self.run_test(
-            "/.*/ >- root", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(b (baz 5))"
-        )
+        self.run_test("/.*/ >- root", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(b (baz 5))")
         self.run_test("/.*/ >- a", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(bar 3 4)")
         self.run_test("/.*/ >- foo", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(2)")
         self.run_test("/.*/ >- bar", "(root (a (foo 1 2) (bar 3 4)) (b (baz 5)))", "(4)")
@@ -507,12 +473,8 @@ class TestTregex(BaseTmpl):
         # test preceding sisters
         preceding = TregexPattern("/.*/ $.. baz")
         self.run_test(preceding, "(a (foo 1) (bar 2) (baz 3))", "(foo 1)", "(bar 2)")
-        self.run_test(
-            preceding, "(root (b (foo 1)) (a (foo 1) (bar 2) (baz 3)))", "(foo 1)", "(bar 2)"
-        )
-        self.run_test(
-            preceding, "(root (a (foo 1) (bar 2) (baz 3)) (b (foo 1)))", "(foo 1)", "(bar 2)"
-        )
+        self.run_test(preceding, "(root (b (foo 1)) (a (foo 1) (bar 2) (baz 3)))", "(foo 1)", "(bar 2)")
+        self.run_test(preceding, "(root (a (foo 1) (bar 2) (baz 3)) (b (foo 1)))", "(foo 1)", "(bar 2)")
         self.run_test(preceding, "(a (foo 1) (baz 2) (bar 3))", "(foo 1)")
         self.run_test(preceding, "(a (baz 1) (foo 2) (bar 3))")
 
@@ -530,9 +492,7 @@ class TestTregex(BaseTmpl):
         self.run_test(following, "(a (foo 1) (bar 2) (baz 3))")
         self.run_test(following, "(root (b (foo 1)) (a (foo 1) (bar 2) (baz 3)))")
         self.run_test(following, "(root (a (foo 1) (bar 2) (baz 3)) (b (foo 1)))")
-        self.run_test(
-            following, "(root (a (baz 1) (bar 2) (foo 3)) (b (foo 1)))", "(bar 2)", "(foo 3)"
-        )
+        self.run_test(following, "(root (a (baz 1) (bar 2) (foo 3)) (b (foo 1)))", "(bar 2)", "(foo 3)")
         self.run_test(following, "(a (foo 1) (baz 2) (bar 3))", "(bar 3)")
         self.run_test(following, "(a (baz 1) (foo 2) (bar 3))", "(foo 2)", "(bar 3)")
 
@@ -599,9 +559,7 @@ class TestTregex(BaseTmpl):
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar)) (baz)))))")
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar))) (baz))))")
         self.run_test("foo <<: bar", "(a (foo (b (c (d (bar)))) (baz)))")
-        self.run_test(
-            "foo <<: bar", "(a (foo (b (c (d (bar))))) (baz))", "(foo (b (c (d (bar)))))"
-        )
+        self.run_test("foo <<: bar", "(a (foo (b (c (d (bar))))) (baz))", "(foo (b (c (d (bar)))))")
         self.run_test("foo <<: bar", "(a (foo (b (c (bar)))))", "(foo (b (c (bar))))")
         self.run_test("foo <<: bar", "(a (foo (b (bar))))", "(foo (b (bar)))")
         self.run_test("foo <<: bar", "(a (foo (bar)))", "(foo (bar))")
@@ -617,17 +575,13 @@ class TestTregex(BaseTmpl):
         self.run_test("bar >>: foo", "(a (foo (bar)))", "(bar)")
 
     def test_precedes_described_chain(self):
-        self.run_test(
-            "DT .+(JJ) NN", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(DT the)"
-        )
+        self.run_test("DT .+(JJ) NN", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(DT the)")
         self.run_test(
             "DT .+(@JJ) /^NN/",
             "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))",
             "(DT the)",
         )
-        self.run_test(
-            "NN ,+(JJ) DT", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(NN house)"
-        )
+        self.run_test("NN ,+(JJ) DT", "(NP (DT the) (JJ large) (JJ green) (NN house))", "(NN house)")
         self.run_test(
             "NNS ,+(@JJ) /^DT/",
             "(NP (PDT both) (DT the) (JJ-SIZE large) (JJ-COLOUR green) (NNS houses))",
@@ -647,16 +601,12 @@ class TestTregex(BaseTmpl):
     def test_dominate_described_chain(self):
         self.run_test("foo <+(bar) baz", "(a (foo (baz)))", "(foo (baz))")
         self.run_test("foo <+(bar) baz", "(a (foo (bar (baz))))", "(foo (bar (baz)))")
-        self.run_test(
-            "foo <+(bar) baz", "(a (foo (bar (bar (baz)))))", "(foo (bar (bar (baz))))"
-        )
+        self.run_test("foo <+(bar) baz", "(a (foo (bar (bar (baz)))))", "(foo (bar (bar (baz))))")
         self.run_test("foo <+(bar) baz", "(a (foo (bif (baz))))")
         self.run_test("foo <+(!bif) baz", "(a (foo (bif (baz))))")
         self.run_test("foo <+(!bif) baz", "(a (foo (bar (baz))))", "(foo (bar (baz)))")
         self.run_test("foo <+(/b/) baz", "(a (foo (bif (baz))))", "(foo (bif (baz)))")
-        self.run_test(
-            "foo <+(/b/) baz", "(a (foo (bar (bif (baz)))))", "(foo (bar (bif (baz))))"
-        )
+        self.run_test("foo <+(/b/) baz", "(a (foo (bar (bif (baz)))))", "(foo (bar (bif (baz))))")
         self.run_test(
             "foo <+(bar) baz",
             "(a (foo (bar (blah 1) (bar (baz)))))",
@@ -676,17 +626,11 @@ class TestTregex(BaseTmpl):
     def test_segmented_and_equals_expressions(self):
         self.run_test("foo : bar", "(a (foo) (bar))", "(foo)")
         self.run_test("foo : bar", "(a (foo))")
-        self.run_test(
-            "(foo << bar) : (foo << baz)", "(a (foo (bar 1)) (foo (baz 2)))", "(foo (bar 1))"
-        )
+        self.run_test("(foo << bar) : (foo << baz)", "(a (foo (bar 1)) (foo (baz 2)))", "(foo (bar 1))")
         self.run_test("(foo << ban) $++ (foo << baz)", "(a (foo (bar 1)) (foo (baz 2)))")
         self.run_test("(foo << bar) == (foo << baz)", "(a (foo (bar)) (foo (baz)))")
-        self.run_test(
-            "(foo << bar) : (foo << baz)", "(a (foo (bar) (baz)))", "(foo (bar) (baz))"
-        )
-        self.run_test(
-            "(foo << bar) == (foo << baz)", "(a (foo (bar) (baz)))", "(foo (bar) (baz))"
-        )
+        self.run_test("(foo << bar) : (foo << baz)", "(a (foo (bar) (baz)))", "(foo (bar) (baz))")
+        self.run_test("(foo << bar) == (foo << baz)", "(a (foo (bar) (baz)))", "(foo (bar) (baz))")
         self.run_test("(foo << bar) : (baz >> a)", "(a (foo (bar) (baz)))", "(foo (bar) (baz))")
         self.run_test("(foo << bar) == (baz >> a)", "(a (foo (bar) (baz)))")
 
@@ -826,14 +770,10 @@ class TestTregex(BaseTmpl):
 
     def test_doc_examples(self):
         self.run_test("S < VP < NP", "(S (VP) (NP))", "(S (VP) (NP))")
-        self.run_test(
-            "S < VP < NP", "(a (S (VP) (NP)) (S (NP) (VP)))", "(S (VP) (NP))", "(S (NP) (VP))"
-        )
+        self.run_test("S < VP < NP", "(a (S (VP) (NP)) (S (NP) (VP)))", "(S (VP) (NP))", "(S (NP) (VP))")
         self.run_test("S < VP < NP", "(S (VP (NP)))")
         self.run_test("S < VP & < NP", "(S (VP) (NP))", "(S (VP) (NP))")
-        self.run_test(
-            "S < VP & < NP", "(a (S (VP) (NP)) (S (NP) (VP)))", "(S (VP) (NP))", "(S (NP) (VP))"
-        )
+        self.run_test("S < VP & < NP", "(a (S (VP) (NP)) (S (NP) (VP)))", "(S (VP) (NP))", "(S (NP) (VP))")
         self.run_test("S < VP & < NP", "(S (VP (NP)))")
         self.run_test("S < VP << NP", "(S (VP (NP)))", "(S (VP (NP)))")
         self.run_test("S < VP << NP", "(S (VP) (foo NP))", "(S (VP) (foo NP))")
@@ -859,9 +799,7 @@ class TestTregex(BaseTmpl):
         """
         More complex tests, often based on examples from our source code
         """
-        test_pattern = (
-            "S < (NP=m1 $.. (VP < ((/VB/ < /^(am|are|is|was|were|'m|'re|'s|be)$/) $.. NP=m2)))"
-        )
+        test_pattern = "S < (NP=m1 $.. (VP < ((/VB/ < /^(am|are|is|was|were|'m|'re|'s|be)$/) $.. NP=m2)))"
         test_tree = (
             "(S (NP (NP (DT The) (JJ next) (NN stop)) (PP (IN on) (NP (DT the) (NN itinerary))))"
             " (VP (VBD was) (NP (NP (NNP Chad)) (, ,) (SBAR (WHADVP (WRB where)) (S (NP (NNP"
@@ -883,10 +821,7 @@ class TestTregex(BaseTmpl):
         )
         self.run_test(test_pattern, test_tree)
 
-        test_tree = (
-            "(ROOT (S (NP (PRP He)) (VP (MD will) (VP (VB be) (ADVP (RB here) (RB soon)))) (."
-            " .)))"
-        )
+        test_tree = "(ROOT (S (NP (PRP He)) (VP (MD will) (VP (VB be) (ADVP (RB here) (RB soon)))) (." " .)))"
         self.run_test(test_pattern, test_tree)
 
         test_pattern = "/^NP(?:-TMP|-ADV)?$/=m1 < (NP=m2 $- /^,$/ $-- NP=m3 !$ CC|CONJP)"
@@ -949,10 +884,7 @@ class TestTregex(BaseTmpl):
                 "(ROOT (S (NP (NNS Raccoons)) (VP (VBP do) (VP (VB come) (WHADVP (WRB When))"
                 " (PRT (RP out)))) (. .)))"
             ),
-            (
-                "(ROOT (S (NP (PRP She)) (VP (VBZ is) (VP (WHADVP (WRB Where)) (VBG working)))"
-                " (. .)))"
-            ),
+            ("(ROOT (S (NP (PRP She)) (VP (VBZ is) (VP (WHADVP (WRB Where)) (VBG working)))" " (. .)))"),
             "(ROOT (S (NP (PRP You)) (VP (VBD did) (VP (WHNP (WP What)) (VB do))) (. .)))",
             (
                 "(ROOT (S (NP (PRP You)) (VP (VBD did) (VP (VB do) (PP (IN in) (NP (NNP"
@@ -1147,12 +1079,8 @@ class TestTregex(BaseTmpl):
               (X
                 (N Larry)))))
         """
-        tree_string = (
-            "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
-        )
-        pattern = TregexPattern(
-            "PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))"
-        )
+        tree_string = "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
+        pattern = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))")
         matches = pattern.findall(tree_string)
 
         self.assertEqual(1, len(matches))
@@ -1185,9 +1113,7 @@ class TestTregex(BaseTmpl):
         # self.assertEqual("(X (N Curly))", pattern.get_nodes("m")[0].tostring())
         # self.assertEqual("(X (N Larry))", pattern.get_nodes("z")[0].tostring())
 
-        pattern = TregexPattern(
-            "PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))"
-        )
+        pattern = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))")
         matches = pattern.findall(tree_string)
         self.assertEqual(1, len(matches))
         self.assertEqual("(PNT ,)", matches[0].tostring())
@@ -1199,9 +1125,7 @@ class TestTregex(BaseTmpl):
             pattern.get_nodes("r")[0].tostring(),
         )
 
-        pattern = TregexPattern(
-            "PNT=p >>- (__=l >, (__=t <- (__=r <, ~l=m <- (__ <, CONJ <- ~l=z))))"
-        )
+        pattern = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, ~l=m <- (__ <, CONJ <- ~l=z))))")
         matches = pattern.findall(tree_string)
         self.assertEqual(1, len(matches))
         self.assertEqual("(PNT ,)", matches[0].tostring())
@@ -1227,9 +1151,7 @@ class TestTregex(BaseTmpl):
         self.run_test("A <<<-2 z", "(ROOT (A (B z) (C b)))", "(A (B z) (C b))")
 
     def test_head_of_phrase(self):
-        self.run_test(
-            "NP <# NNS", "(NP (NN work) (NNS practices))", "(NP (NN work) (NNS practices))"
-        )
+        self.run_test("NP <# NNS", "(NP (NN work) (NNS practices))", "(NP (NN work) (NNS practices))")
         self.run_test("NP <# NN", "(NP (NN work) (NNS practices))")
         # should have no results
         self.run_test(
@@ -1366,9 +1288,7 @@ class TestTregex(BaseTmpl):
         self.assertEqual(1, len(matches))
 
         # Second pattern: single relation in parentheses.  First tree should not match.
-        pattern = TregexPattern(
-            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ (< and) $+ (RB=adv $+ /^S/)))"
-        )
+        pattern = TregexPattern("/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ (< and) $+ (RB=adv $+ /^S/)))")
         matches = pattern.findall(tree_strings[0])
         self.assertEqual(0, len(matches))
 
@@ -1379,9 +1299,7 @@ class TestTregex(BaseTmpl):
         self.assertEqual(1, len(matches))
 
         # Third pattern: single relation in parentheses and negated.  Only first tree should match.
-        pattern = TregexPattern(
-            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ !(< and) $+ (RB=adv $+ /^S/)))"
-        )
+        pattern = TregexPattern("/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ !(< and) $+ (RB=adv $+ /^S/)))")
         matches = pattern.findall(tree_strings[0])
         self.assertEqual(1, len(matches))
 
@@ -1392,9 +1310,7 @@ class TestTregex(BaseTmpl):
         self.assertEqual(0, len(matches))
 
         # Fourth pattern: double relation in parentheses, no negation.
-        pattern = TregexPattern(
-            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ (< and $+ RB) $+ (RB=adv $+ /^S/)))"
-        )
+        pattern = TregexPattern("/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ (< and $+ RB) $+ (RB=adv $+ /^S/)))")
         matches = pattern.findall(tree_strings[0])
         self.assertEqual(0, len(matches))
 
@@ -1405,9 +1321,7 @@ class TestTregex(BaseTmpl):
         self.assertEqual(1, len(matches))
 
         # Fifth pattern: double relation in parentheses, negated.
-        pattern = TregexPattern(
-            "/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ !(< and $+ RB) $+ (RB=adv $+ /^S/)))"
-        )
+        pattern = TregexPattern("/^S/ < (/^S/ $++ (/^[,]|CC|CONJP$/ !(< and $+ RB) $+ (RB=adv $+ /^S/)))")
         matches = pattern.findall(tree_strings[0])
         self.assertEqual(1, len(matches))
 
@@ -1444,9 +1358,7 @@ class TestTregex(BaseTmpl):
         self.run_test("A <= A", "(A (A 1) (B 2))", "(A (A 1) (B 2))", "(A (A 1) (B 2))", "(A 1)")
         # This is the kind of expression where this relation can be useful
         self.run_test("A <= (A < B)", "(A (A (B 1)))", "(A (A (B 1)))", "(A (B 1))")
-        self.run_test(
-            "A <= (A < B)", "(A (A (B 1)) (A (C 2)))", "(A (A (B 1)) (A (C 2)))", "(A (B 1))"
-        )
+        self.run_test("A <= (A < B)", "(A (A (B 1)) (A (C 2)))", "(A (A (B 1)) (A (C 2)))", "(A (B 1))")
         self.run_test("A <= (A < B)", "(A (A (C 2)))")
 
     def test_root_disjunction(self):
@@ -1490,9 +1402,7 @@ class TestTregex(BaseTmpl):
         """
         # test the obvious expected matches and several expected match failures
         self.run_test("A <... { B ; C ; D }", "(A (B 1) (C 2) (D 3))", "(A (B 1) (C 2) (D 3))")
-        self.run_test(
-            "A <... { B ; C ; D }", "(Z (A (B 1) (C 2) (D 3)))", "(A (B 1) (C 2) (D 3))"
-        )
+        self.run_test("A <... { B ; C ; D }", "(Z (A (B 1) (C 2) (D 3)))", "(A (B 1) (C 2) (D 3))")
         self.run_test("A <... { B ; C ; D }", "(A (B 1) (C 2) (D 3) (E 4))")
         self.run_test("A <... { B ; C ; D }", "(A (E 4) (B 1) (C 2) (D 3))")
         self.run_test("A <... { B ; C ; D }", "(A (B 1) (C 2) (E 4) (D 3))")
@@ -1501,15 +1411,9 @@ class TestTregex(BaseTmpl):
         # every test above should return the opposite when negated
         self.run_test("A !<... { B ; C ; D }", "(A (B 1) (C 2) (D 3))")
         self.run_test("A !<... { B ; C ; D }", "(Z (A (B 1) (C 2) (D 3)))")
-        self.run_test(
-            "A !<... { B ; C ; D }", "(A (B 1) (C 2) (D 3) (E 4))", "(A (B 1) (C 2) (D 3) (E 4))"
-        )
-        self.run_test(
-            "A !<... { B ; C ; D }", "(A (E 4) (B 1) (C 2) (D 3))", "(A (E 4) (B 1) (C 2) (D 3))"
-        )
-        self.run_test(
-            "A !<... { B ; C ; D }", "(A (B 1) (C 2) (E 4) (D 3))", "(A (B 1) (C 2) (E 4) (D 3))"
-        )
+        self.run_test("A !<... { B ; C ; D }", "(A (B 1) (C 2) (D 3) (E 4))", "(A (B 1) (C 2) (D 3) (E 4))")
+        self.run_test("A !<... { B ; C ; D }", "(A (E 4) (B 1) (C 2) (D 3))", "(A (E 4) (B 1) (C 2) (D 3))")
+        self.run_test("A !<... { B ; C ; D }", "(A (B 1) (C 2) (E 4) (D 3))", "(A (B 1) (C 2) (E 4) (D 3))")
         self.run_test("A !<... { B ; C ; D }", "(A (B 1) (C 2))", "(A (B 1) (C 2))")
 
         # test a couple various forms of nesting
@@ -1522,9 +1426,7 @@ class TestTregex(BaseTmpl):
         self.run_test("A <... { (B !< C) ; D }", "(A (B (C 2)) (D 3))")
 
     def test_disjunction_variable_assignments(self):
-        tree_string = (
-            "(NP (UCP (NNP U.S.) (CC and) (ADJP (JJ northern) (JJ European))) (NNS diplomats))"
-        )
+        tree_string = "(NP (UCP (NNP U.S.) (CC and) (ADJP (JJ northern) (JJ European))) (NNS diplomats))"
         pattern = TregexPattern("UCP [ <- (ADJP=adjp < JJR) || <, NNP=np ]")
 
         matches = pattern.findall(tree_string)
@@ -1669,9 +1571,7 @@ class TestTregex(BaseTmpl):
         self.run_test(r"/\(/ < B", "(A (-LRB- B))", "(-LRB- B)")
         self.run_test(r"/\)/ < B", "(A (-RRB- B))", "(-RRB- B)")
 
-    def run_test(
-        self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str
-    ):
+    def run_test(self, pattern: Union[TregexPattern, str], tree_str: str, *expected_results: str):
         """
         Check that running the Tregex pattern on the tree gives the results
         shown in results.

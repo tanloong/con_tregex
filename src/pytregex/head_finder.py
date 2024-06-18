@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-# -*- coding=utf-8 -*-
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tree import Tree
+    from pytregex.tree import Tree
 
 
 class HeadFinder:

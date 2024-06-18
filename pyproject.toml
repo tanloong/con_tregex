@@ -1,21 +1,32 @@
+# vim:tabstop=2:shiftwidth=2
 # Ruff complete options: https://docs.astral.sh/ruff/settings/#extend
 [tool.ruff]
 line-length = 112
+extend-exclude = [
+  "src/pytregex/ply",
+]
 
 [tool.ruff.lint]
 select = [
-    "E", # pycodestyle
-    "F", # Pyflakes
-    "UP", # pyupgrade
-    "B", # flake8-bugbear
-    "SIM", # flake8-simplify
-    "I", # isort
+  "E", # pycodestyle
+  "F", # Pyflakes
+  "UP", # pyupgrade
+  "B", # flake8-bugbear
+  "SIM", # flake8-simplify
+  "I", # isort
 ]
 ignore = [
-    "E501",
-    "B011",
-    "UP038", # 'isinstance(x, int | float)' causes slower code
-    "F403", "F405",  # start imports
+  "E501",
+  "B011",
+  "UP038", # 'isinstance(x, int | float)' causes slower code
+  "B007", # Loop control variable `i` not used within loop body
+]
+[tool.ruff.lint.per-file-ignores]
+"src/pytregex/tregex.py" = [
+  "F841", # Local variable assigned to but never used
+]
+"tests/test_tregex.py" = [
+  "F841", # Local variable assigned to but never used
 ]
 
 [tool.ruff.lint.flake8-type-checking]
@@ -32,6 +43,8 @@ line-ending = "auto"
 [tool.mypy]
 # https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-library-stubs-or-py-typed-marker
 ignore_missing_imports = true
+check_untyped_defs = true
+exclude =[ "src/pytregex/ply/", "src/pytregex/peekable.py" ]
 
 [tool.pyright]
 reportIncompatibleMethodOverride = false

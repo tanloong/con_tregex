@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding=utf-8 -*-
 
 from pytregex.abstract_collins_head_finder import AbstractCollinsHeadFinder
 
@@ -67,9 +66,7 @@ class ChineseHeadFinder(AbstractCollinsHeadFinder):
                 [rightdis, "NN", "NR", "NT", "FW"],
             ],
             # cdm 2006: QP: add OD -- occurs some; occasionally NP, NT, M; parsing performance no-op
-            "QP": [
-                [right, "QP", "CLP", "CD", "OD", "NP", "NT", "M"]
-            ],  # there's some QP adjunction
+            "QP": [[right, "QP", "CLP", "CD", "OD", "NP", "NT", "M"]],  # there's some QP adjunction
             # add OD?
             "UCP": [
                 [

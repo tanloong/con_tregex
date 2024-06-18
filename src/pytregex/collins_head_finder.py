@@ -2,10 +2,10 @@
 
 from typing import TYPE_CHECKING, List
 
-from abstract_collins_head_finder import AbstractCollinsHeadFinder
+from pytregex.abstract_collins_head_finder import AbstractCollinsHeadFinder
 
 if TYPE_CHECKING:
-    from .tree import Tree
+    from pytregex.tree import Tree
 
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/CollinsHeadFinder.java
 # last modified at May 24, 2019 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/CollinsHeadFinder.java)
@@ -168,7 +168,7 @@ class CollinsHeadFinder(AbstractCollinsHeadFinder):
             if prevLab == "CC" or prevLab == "CONJP":
                 newHeadIdx = headIdx - 2
                 t = daughterTrees[newHeadIdx]
-                while newHeadIdx >= 0 and t.is_preterminal and t.label in self.pennPunctTags:
+                while newHeadIdx >= 0 and t.is_preterminal() and t.label in self.pennPunctTags:
                     newHeadIdx -= 1
                 if newHeadIdx >= 0:
                     headIdx = newHeadIdx

@@ -8,7 +8,6 @@ import time
 # import tracemalloc
 from unittest import TestCase
 
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 text = "There was no possibility of taking a walk that day."
 tree = """(ROOT

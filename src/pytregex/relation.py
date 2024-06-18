@@ -4,12 +4,12 @@ from abc import ABC, abstractmethod
 from itertools import chain as _chain
 from typing import TYPE_CHECKING, Generator, Iterator, List, Optional
 
-from collins_head_finder import CollinsHeadFinder
+from pytregex.collins_head_finder import CollinsHeadFinder
 
 if TYPE_CHECKING:
-    from condition import NodeDescriptions
-    from head_finder import HeadFinder
-    from tree import Tree
+    from pytregex.condition import NodeDescriptions
+    from pytregex.head_finder import HeadFinder
+    from pytregex.tree import Tree
 
 # reference: https://nlp.stanford.edu/nlp/javadoc/javanlp-3.5.0/edu/stanford/nlp/trees/tregex/TregexPattern.html
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 # ------------------------------------------------------------------------------
 
 # TODO ROOT subclass
+
 
 class AbstractRelation(ABC):
     symbol: Optional[str] = None
@@ -79,9 +80,8 @@ class ONLY_CHILD_OF(AbstractRelation):
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         parent_ = t.parent
-        if parent_ is not None:  # if t is not root
-            if parent_.numChildren() == 1:
-                yield parent_
+        if parent_ is not None and parent_.numChildren() == 1:
+            yield parent_
 
 
 class HAS_ONLY_CHILD(AbstractRelation):
@@ -186,7 +186,7 @@ class HAS_LEFTMOST_DESCENDANT(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        kid: Optional["Tree"] = t.firstChild()
+        kid: Optional[Tree] = t.firstChild()
         while kid is not None:
             yield kid
             kid = kid.firstChild()
@@ -393,7 +393,7 @@ class HEADS(AbstractRelation):
     def satisfies(cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None) -> bool:
         if t2.isLeaf():
             return False
-        elif t2.is_preterminal:
+        elif t2.is_preterminal():
             return t2.firstChild() is t1
         else:
             if headFinder is None:
@@ -488,9 +488,9 @@ class PRECEDES(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        searchStack: List["Tree"] = []
-        current: Optional["Tree"] = t
-        parent_: Optional["Tree"] = t.parent
+        searchStack: List[Tree] = []
+        current: Optional[Tree] = t
+        parent_: Optional[Tree] = t.parent
         while parent_ is not None:
             for kid in reversed(parent_.children):
                 if kid is current:
@@ -511,8 +511,8 @@ class IMMEDIATELY_PRECEDES(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        current: Optional["Tree"] = None
-        parent_: Optional["Tree"] = t
+        current: Optional[Tree] = None
+        parent_: Optional[Tree] = t
         while True:
             current = parent_
             parent_ = parent_.parent
@@ -539,9 +539,9 @@ class FOLLOWS(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        searchStack: List["Tree"] = []
-        current: Optional["Tree"] = t
-        parent_: Optional["Tree"] = t.parent
+        searchStack: List[Tree] = []
+        current: Optional[Tree] = t
+        parent_: Optional[Tree] = t.parent
         while parent_ is not None:
             for kid in parent_.children:
                 if kid is current:
@@ -562,8 +562,8 @@ class IMMEDIATELY_FOLLOWS(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        current: Optional["Tree"] = None
-        parent_: Optional["Tree"] = t
+        current: Optional[Tree] = None
+        parent_: Optional[Tree] = t
         while True:
             current = parent_
             parent_ = parent_.parent
@@ -766,7 +766,7 @@ class ANCESTOR_OF_ITH_LEAF(AbstractRelation):
         leaves = t1.getLeaves()
         if len(leaves) < abs(leaf_num):
             return False
-        if leaf_num > 0:
+        if leaf_num > 0:  # noqa: SIM108
             index = leaf_num - 1
         else:
             # eg, leafNum == -1 means we check leaves.size() - 1

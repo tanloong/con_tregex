@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
+import pytregex.relation as R
 from pytregex.condition import NODE_ID, NODE_REGEX, Condition, NodeDescription, NodeDescriptions
-from pytregex.relation import *
 
 from .base_tmpl import BaseTmpl
 
@@ -20,7 +20,7 @@ class TestNodeDescriptions(BaseTmpl):
         self.assertEqual(str(node_descs1), "!@S|NN|/V/")
 
         node_descs2 = NodeDescriptions(desc_1, desc_2)
-        reldata = RelationData(CHILD_OF, "<")
+        reldata = R.RelationData(R.CHILD_OF, "<")
         cond = Condition(relation_data=reldata, node_descriptions=node_descs2)
         node_descs1.set_condition(cond)
 

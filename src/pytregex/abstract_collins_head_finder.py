@@ -1,11 +1,12 @@
-from typing import List, Optional, Set, TYPE_CHECKING
-from head_finder import HeadFinder
+from typing import TYPE_CHECKING, List, Optional, Set
+
+from pytregex.head_finder import HeadFinder
 
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/AbstractCollinsHeadFinder.java
 # last modified at Oct 1, 2021 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/AbstractCollinsHeadFinder.java)
 
 if TYPE_CHECKING:
-    from tree import Tree
+    from pytregex.tree import Tree
 
 
 class AbstractCollinsHeadFinder(HeadFinder):
@@ -74,7 +75,7 @@ class AbstractCollinsHeadFinder(HeadFinder):
         param t The tre to determine the head daughter of param parent The parent of t (or may be None)
         return The head daughter of t
         """
-        theHead: Optional["Tree"] = None
+        theHead: Optional[Tree] = None
         motherCat = t.label
         if motherCat.startswith("@"):
             motherCat = motherCat[1:]
@@ -96,9 +97,7 @@ class AbstractCollinsHeadFinder(HeadFinder):
                 break
         return theHead
 
-    def traverseLocate(
-        self, daughterTrees: List["Tree"], how: List[str], lastResort: bool
-    ) -> Optional["Tree"]:
+    def traverseLocate(self, daughterTrees: List["Tree"], how: List[str], lastResort: bool) -> Optional["Tree"]:
         """
         Attempt to locate head daughter tree from among daughters. Go through
         daughterTrees looking for things from or not in a set given by the
@@ -108,8 +107,8 @@ class AbstractCollinsHeadFinder(HeadFinder):
         """
         try:
             headIdx = self._how_map[how[0]](daughterTrees, how)
-        except KeyError:
-            raise ValueError("Invalid direction type")
+        except KeyError as e:
+            raise ValueError("Invalid direction type") from e
         if headIdx < 0:
             if lastResort:
                 # use the default rule to try to match anything except

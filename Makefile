@@ -1,4 +1,4 @@
-.PHONY: refresh clean build release install test cov lint
+.PHONY: refresh clean build release install test coverage lint
 
 refresh: lint clean build install
 
@@ -10,9 +10,8 @@ clean:
 	rm -rf src/*.egg-info
 	rm -rf htmlcov
 	rm -rf coverage.xml
-	rm -rf parser.out
-	rm -rf src/parser.out
-	pip uninstall -y pytregex || true
+	rm -rf parser.out src/parser.out
+	uv pip uninstall pytregex || true
 
 build:
 	python setup.py sdist bdist_wheel
@@ -26,14 +25,14 @@ install:
 test:
 	python -m unittest
 
-cov:
+coverage:
 	python -m coverage run -m unittest
 	python -m coverage html
 
 lint:
-	black src/ tests/ --exclude src/pytregex/ply --line-length 97 --preview
-	flake8 src/ tests/ --exclude src/pytregex/ply/ --count --max-line-length=97 --statistics --ignore=E203,E501,W503,F841
-	mypy src/ --ignore-missing-imports --exclude src/pytregex/ply/ --exclude src/pytregex/test.py
+	ruff format src/ tests/
+	ruff check src/ tests/ --fix
+	mypy src/
 
 README_zh_tw.md: README_zh_cn.md
 	cd ~/software/zhconv && python -m zhconv zh-tw < ~/projects/pytregex/README_zh_cn.md > ~/projects/pytregex/README_zh_tw.md
