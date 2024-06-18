@@ -18,8 +18,6 @@ if TYPE_CHECKING:
 # ------------------------------------------------------------------------------
 
 # TODO ROOT subclass
-# TODO use searchStack like Relation.java
-
 
 class AbstractRelation(ABC):
     symbol: Optional[str] = None
@@ -796,10 +794,10 @@ class ANCESTOR_OF_ITH_LEAF(AbstractRelation):
 class AbstractRelationData(ABC):
     def __init__(self, op: type[AbstractRelation], symbol: str):
         self.op = op
-        self.__repr = symbol
+        self.symbol = symbol
 
     def __repr__(self) -> str:
-        return self.__repr
+        return f"{self.symbol}{getattr(self, 'arg', '')}"
 
     @abstractmethod
     def searchNodeIterator(

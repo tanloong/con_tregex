@@ -39,7 +39,7 @@ class TregexUI:
         args_parser.add_argument(
             "-C",
             action="store_true",
-            dest="is_C",
+            dest="is_count",
             default=False,
             help="suppresses printing of matches, so only the number of matches is printed.",
         )
@@ -154,7 +154,7 @@ class TregexUI:
                 for node in handled_nodes:
                     stdout(f"{node}\n")
         else:
-            if self.options.is_C:
+            if self.options.is_count:
                 stdout(f"{len(matches)}\n")
                 return True, None
             logging.debug("Printing matches...")

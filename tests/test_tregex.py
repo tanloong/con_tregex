@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding=utf-8 -*-
 
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/efc66a9cf49fecba219dfaa4025315ad966285cc/test/src/edu/stanford/nlp/trees/tregex/TregexTest.java
 # last modified at Apr 2, 2022 (https://github.com/stanfordnlp/CoreNLP/commits/efc66a9cf49fecba219dfaa4025315ad966285cc/test/src/edu/stanford/nlp/trees/tregex/TregexTest.java)

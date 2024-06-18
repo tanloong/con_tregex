@@ -2,9 +2,8 @@
 
 import re
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
-
-from peekable import peekable
 
 if TYPE_CHECKING:
     from relation import AbstractRelationData
@@ -32,35 +31,50 @@ class NodeDescription(NamedTuple):
         return self.value
 
 
+@dataclass
+class BackRef:
+    node_descriptions: "NodeDescriptions"
+    nodes: Optional[list["Tree"]]
+
+
 class NodeDescriptions:
     def __init__(
         self,
-        node_descriptions: List[NodeDescription],
-        *,
-        is_negated: bool = False,
+        *node_descriptions: NodeDescription,
+        under_negation: bool = False,
         use_basic_cat: bool = False,
+        condition: Optional["And"] = None,
+        backref: Optional[BackRef] = None,
+        name: Optional[str] = None,
     ) -> None:
-        self.descriptions = node_descriptions
-        self.is_negated = is_negated
+        self.descriptions = list(node_descriptions)
+        self.under_negation = under_negation
         self.use_basic_cat = use_basic_cat
 
-        self.name = None
-        self.condition: And | None = None
+        self.name = name
+        self.condition = condition
+        self.backref = backref
 
     def __iter__(self) -> Iterator[NodeDescription]:
         return iter(self.descriptions)
 
     def __repr__(self) -> str:
-        prefix = f"{'!' if self.is_negated else ''}{'@' if self.use_basic_cat else ''}"
-        ret = f"{prefix}{'|'.join(map(str, self.descriptions))}"
+        if self.name is not None:
+            ret = f"={self.name}"
+        else:
+            prefix = f"{'!' if self.under_negation else ''}{'@' if self.use_basic_cat else ''}"
+            ret = f"{prefix}{'|'.join(map(str, self.descriptions))}"
+
         if self.condition is not None:
             ret = f"({ret} {self.condition})"
         return ret
 
-    def has_name(self) -> bool:
-        return self.name is not None
-
-    def set_name(self, name: str) -> None:
+    def set_backref(
+        self,
+        backref: BackRef,
+        name: str,
+    ) -> None:
+        self.backref = backref
         self.name = name
 
     def set_condition(self, condition: "AbstractCondition") -> None:
@@ -73,10 +87,10 @@ class NodeDescriptions:
         self.descriptions.append(other_description)
 
     def negate(self) -> bool:
-        if self.is_negated:
+        if self.under_negation:
             return False
 
-        self.is_negated = True
+        self.under_negation = True
         return True
 
     def enable_basic_cat(self) -> bool:
@@ -88,32 +102,47 @@ class NodeDescriptions:
 
     def _satisfies_ignore_condition(self, t: "Tree"):
         return any(
-            desc.op.satisfies(t, desc.value, is_negated=self.is_negated, use_basic_cat=self.use_basic_cat)
+            desc.op.satisfies(
+                t, desc.value, under_negation=self.under_negation, use_basic_cat=self.use_basic_cat
+            )
             for desc in self.descriptions
         )
 
     def satisfies(self, t: "Tree") -> bool:
         if self.condition is None:
             return any(
-                desc.op.satisfies(t, desc.value, is_negated=self.is_negated, use_basic_cat=self.use_basic_cat)
+                desc.op.satisfies(
+                    t, desc.value, under_negation=self.under_negation, use_basic_cat=self.use_basic_cat
+                )
                 for desc in self.descriptions
             )
         else:
             cond_satisfies = self.condition.satisfies
             return any(
-                desc.op.satisfies(t, desc.value, is_negated=self.is_negated, use_basic_cat=self.use_basic_cat)
+                desc.op.satisfies(
+                    t, desc.value, under_negation=self.under_negation, use_basic_cat=self.use_basic_cat
+                )
                 and cond_satisfies(t)
                 for desc in self.descriptions
             )
 
     def searchNodeIterator(self, t: "Tree", *, recursive: bool = True) -> Generator["Tree", None, None]:
         node_gen = t.preorder_iter() if recursive else (t for _ in range(1))
+        node_gen = filter(self._satisfies_ignore_condition, node_gen)
+
         if self.condition is None:
-            yield from (node for node in node_gen if self._satisfies_ignore_condition(node))
+            ret = node_gen
         else:
             cond_search = self.condition.searchNodeIterator
-            for node in filter(self._satisfies_ignore_condition, node_gen):
-                yield from cond_search(node)
+            ret = (m for node in node_gen for m in cond_search(node))
+
+        if self.backref is not None:
+            ret = list(ret)
+            if self.backref.nodes is not None:
+                self.backref.nodes.extend(ret)
+            else:
+                self.backref.nodes = ret
+        yield from ret
 
 
 class NODE_OP(ABC):
@@ -124,7 +153,7 @@ class NODE_OP(ABC):
         node: "Tree",
         value: str = "",
         *,
-        is_negated: bool = False,
+        under_negation: bool = False,
         use_basic_cat: bool = False,
     ) -> bool:
         raise NotImplementedError()
@@ -135,34 +164,38 @@ class NODE_OP(ABC):
         node: "Tree",
         ids: Iterable[str],
         *,
-        is_negated: bool = False,
+        under_negation: bool = False,
         use_basic_cat: bool = False,
     ) -> bool:
-        return any(cls.satisfies(node, id, is_negated=is_negated, use_basic_cat=use_basic_cat) for id in ids)
+        return any(
+            cls.satisfies(node, id, under_negation=under_negation, use_basic_cat=use_basic_cat) for id in ids
+        )
 
 
 class NODE_ID(NODE_OP):
     @classmethod
-    def satisfies(cls, node: "Tree", id: str, *, is_negated: bool = False, use_basic_cat: bool = False) -> bool:
+    def satisfies(
+        cls, node: "Tree", id: str, *, under_negation: bool = False, use_basic_cat: bool = False
+    ) -> bool:
         attr = "basic_category" if use_basic_cat else "label"
         value = getattr(node, attr)
 
         if value is None:
-            return is_negated
+            return under_negation
         else:
-            return (value == id) != is_negated
+            return (value == id) != under_negation
 
 
 class NODE_REGEX(NODE_OP):
     @classmethod
     def satisfies(
-        cls, node: "Tree", regex: str, *, is_negated: bool = False, use_basic_cat: bool = False
+        cls, node: "Tree", regex: str, *, under_negation: bool = False, use_basic_cat: bool = False
     ) -> bool:
         attr = "basic_category" if use_basic_cat else "label"
         value = getattr(node, attr)
 
         if value is None:
-            return is_negated
+            return under_negation
         else:
             # Convert regex to standard python regex
             flag = ""
@@ -185,7 +218,7 @@ class NODE_REGEX(NODE_OP):
             if flag:
                 regex = "(?" + "".join(set(flag)) + ")" + regex
 
-            return (re.search(regex, value) is not None) != is_negated
+            return (re.search(regex, value) is not None) != under_negation
 
 
 class NODE_ANY(NODE_OP):
@@ -195,10 +228,10 @@ class NODE_ANY(NODE_OP):
         node: "Tree",
         value: str = "",
         *,
-        is_negated: bool = False,
+        under_negation: bool = False,
         use_basic_cat: bool = False,
     ) -> bool:
-        return not is_negated
+        return not under_negation
 
 
 class NODE_ROOT(NODE_OP):
@@ -208,10 +241,10 @@ class NODE_ROOT(NODE_OP):
         node: "Tree",
         value: str = "",
         *,
-        is_negated: bool = False,
+        under_negation: bool = False,
         use_basic_cat: bool = False,
     ) -> bool:
-        return (node.parent is None) != is_negated
+        return (node.parent is None) != under_negation
 
 
 class AbstractCondition(ABC):
@@ -424,7 +457,7 @@ class Opt(AbstractCondition):
         self.condition = condition
 
     def __repr__(self):
-        return f"?{self.condition}"
+        return f"?[{self.condition}]"
 
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         g = self.condition.searchNodeIterator(t)

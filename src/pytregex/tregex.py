@@ -1,7 +1,8 @@
 import logging
 import re
 import warnings
-from typing import Dict, List, Never
+from collections import defaultdict
+from typing import Dict, List, Literal, Never
 
 from condition import (
     NODE_ANY,
@@ -10,6 +11,7 @@ from condition import (
     NODE_ROOT,
     AbstractCondition,
     And,
+    BackRef,
     Condition,
     NodeDescription,
     NodeDescriptions,
@@ -17,6 +19,7 @@ from condition import (
     Opt,
     Or,
 )
+from exceptions import ParseException
 from ply import lex, yacc
 from relation import *
 from tree import Tree
@@ -128,10 +131,14 @@ class TregexPattern:
         self.lexer = lex.lex(module=self)
         self.lexer.input(tregex_pattern)
 
-        self.backrefs_map: Dict[str, list] = {}
         self.pattern = tregex_pattern
+        # > keep track of which variables we've seen, so that we can reject
+        # > some nonsense patterns such as ones that reset variables or link
+        # > to variables that haven't been set
+        self.backref_table: dict[str, BackRef] = {}
 
     def findall(self, tree_string: str) -> List[Tree]:
+        # TODO: must tupleize?
         trees = tuple(Tree.fromstring(tree_string))
         parser = self.make_parser(trees)
         self._reset_lexer_state()
@@ -141,13 +148,14 @@ class TregexPattern:
 
     def get_nodes(self, name: str) -> List[Tree]:
         try:
-            handled_nodes = self.backrefs_map[name]
+            backref = self.backref_table[name]
         except KeyError as e:
             raise SystemExit(
                 f'Error!!  There is no matched node "{name}"!  Did you specify such a label in the pattern?'
             ) from e
         else:
-            return handled_nodes
+            assert backref.nodes is not None
+            return backref.nodes
 
     def _reset_lexer_state(self) -> None:
         """
@@ -160,9 +168,6 @@ class TregexPattern:
         tokens = self.tokens
 
         precedence = (
-            # keep consistency with Stanford Tregex
-            # 1. "VP < NP < N" matches a VP which dominates both an NP and an N
-            # 2. "VP < (NP < N)" matches a VP dominating an NP, which in turn dominates an N
             # shift on shift/reduce conflicts:
             # - node_descriptions_list -> node_descriptions_list node_descriptions .
             #  + condition -> . ! condition
@@ -208,7 +213,7 @@ class TregexPattern:
             ("left", "IMAGINE"),
             ("left", ")", "!", "@"),
             ("left", "OR_NODE"),
-            # ("nonassoc", "="),
+            ("nonassoc", "=", "~"),
         )
 
         log_indent = 0
@@ -262,7 +267,7 @@ class TregexPattern:
             """
             node_descriptions : node_description %prec IMAGINE
             """
-            p[0] = NodeDescriptions([p[1]])
+            p[0] = NodeDescriptions(p[1])
 
         def p_node_descriptions_or_node_node_description(p):
             """
@@ -284,26 +289,53 @@ class TregexPattern:
             """
             p[0] = p[2]
 
-        # def p_named_nodes_equal_id(p):
-        #     """
-        #     named_nodes : named_nodes '=' ID
-        #     """
-        #     name = p[3]
-        #     named_nodes = p[1]
-        #
-        #     named_nodes.set_name(name)
-        #     self.backrefs_map[name] = named_nodes.nodes
-        #
-        #     p[0] = named_nodes
+        def p_node_descriptions_equal_id(p):
+            """
+            node_descriptions : node_descriptions '=' ID
+            """
+            name: str = p[3]
+            if name in self.backref_table:
+                raise ParseException(f"Variable {name} has been declared twice, which makes no sense")
 
-        # def p_link_id(p):
-        #     """
-        #     named_nodes : '~' ID
-        #     """
-        #     id = p[2]
-        #     nodes = self.get_nodes(id)
-        #
-        #     p[0] = NamedNodes(None, nodes, string_repr=f"~ {id}")
+            node_descriptions: NodeDescriptions = p[1]
+            # '!' has higher precedence than '=', it will have already been reduced to node_descriptions prior to '='
+            if node_descriptions.under_negation:
+                raise ParseException("No named tregex nodes allowed in the scope of negation")
+
+            backref = BackRef(node_descriptions, None)
+            self.backref_table[name] = backref
+            node_descriptions.set_backref(backref, name)
+
+            p[0] = node_descriptions
+
+        def p_link_id(p):
+            """
+            node_descriptions : '~' ID
+            """
+            linked_name: str = p[2]
+            if linked_name not in self.backref_table:
+                raise ParseException(f"Variable {linked_name} was referenced before it was declared")
+
+            orig_nodedescs = self.backref_table[linked_name].node_descriptions
+            node_descriptions = NodeDescriptions(
+                *orig_nodedescs.descriptions,
+                under_negation=orig_nodedescs.under_negation,
+                use_basic_cat=orig_nodedescs.use_basic_cat,
+            )
+
+            p[0] = node_descriptions
+
+        def p_equal_id(p):
+            """
+            node_descriptions : '=' ID
+            """
+            name = p[2]
+            if name not in self.backref_table:
+                raise ParseException(f"Variable {name} was referenced before it was declared")
+
+            backref = self.backref_table[name]
+            node_descriptions = NodeDescriptions(backref=backref, name=name)
+            p[0] = node_descriptions
 
         # 2. relation
         # 2.1 RELATION
@@ -399,7 +431,7 @@ class TregexPattern:
             """
             and_conditions_multi_relation : MULTI_RELATION "{" node_descriptions_list "}"
             """
-            rel_key = p[1]
+            rel_key = "<"
             rel_op = HAS_ITH_CHILD
             node_descriptions_list = p[3]
 
@@ -412,7 +444,7 @@ class TregexPattern:
                 )
 
             multi_relation_data = RelationWithNumArgData(rel_op, rel_key, arg=i + 1)
-            node_descriptions = NodeDescriptions([NodeDescription(NODE_ANY, self.t_BLANK)])
+            node_descriptions = NodeDescriptions(NodeDescription(NODE_ANY, self.t_BLANK))
             conditions.append(
                 Not(Condition(relation_data=multi_relation_data, node_descriptions=node_descriptions))
             )
