@@ -293,11 +293,9 @@ class TregexPattern:
             node_descriptions : node_descriptions '=' ID
             """
             name: str = p[3]
-            if name in self.backref_table:
-                raise ParseException(f"Variable {name} has been declared twice, which makes no sense")
-
             node_descriptions: NodeDescriptions = p[1]
-            # '!' has higher precedence than '=', it will have already been reduced to node_descriptions prior to '='
+            # '!' has higher precedence than '=', it will have already been
+            # reduced to node_descriptions prior to '='
             if node_descriptions.under_negation:
                 raise ParseException("No named tregex nodes allowed in the scope of negation")
 
@@ -324,17 +322,17 @@ class TregexPattern:
 
             p[0] = node_descriptions
 
-        def p_equal_id(p):
-            """
-            node_descriptions : '=' ID
-            """
-            name = p[2]
-            if name not in self.backref_table:
-                raise ParseException(f"Variable {name} was referenced before it was declared")
-
-            backref = self.backref_table[name]
-            node_descriptions = NodeDescriptions(backref=backref, name=name)
-            p[0] = node_descriptions
+        # def p_equal_id(p):
+        #     """
+        #     node_descriptions : '=' ID
+        #     """
+        #     name = p[2]
+        #     if name not in self.backref_table:
+        #         raise ParseException(f"Variable {name} was referenced before it was declared")
+        #
+        #     backref = self.backref_table[name]
+        #     node_descriptions = NodeDescriptions(backref=backref, name=name)
+        #     p[0] = node_descriptions
 
         # 2. relation
         # 2.1 RELATION

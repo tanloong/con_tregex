@@ -3,7 +3,9 @@
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional, Sequence
+
+from pytregex.exceptions import ParseException
 
 if TYPE_CHECKING:
     from pytregex.relation import AbstractRelationData
@@ -51,9 +53,9 @@ class NodeDescriptions:
         self.under_negation = under_negation
         self.use_basic_cat = use_basic_cat
 
-        self.name = name
         self.condition = condition
         self.backref = backref
+        self.name = name
 
     def __iter__(self) -> Iterator[NodeDescription]:
         return iter(self.descriptions)
@@ -133,6 +135,12 @@ class NodeDescriptions:
         if self.condition is None:
             ret = node_gen
         else:
+            # complains about duplicate names in conjunction
+            if self.name is not None and self.name in self.condition.names:
+                raise ParseException(
+                    f"Variable '{self.name}' was declared twice in the scope of the same conjunction."
+                )
+
             cond_search = self.condition.searchNodeIterator
             ret = (m for node in node_gen for m in cond_search(node))
 
@@ -248,9 +256,6 @@ class NODE_ROOT(NODE_OP):
 
 
 class AbstractCondition(ABC):
-    # @abstractmethod
-    # def match(self, these_nodes: List["Tree"], this_name: Optional[str]):
-    #     pass
     @abstractmethod
     def __repr__(self):
         raise NotImplementedError
@@ -273,14 +278,9 @@ class Condition(AbstractCondition):
         self,
         relation_data: "AbstractRelationData",
         node_descriptions: NodeDescriptions,
-        # those_nodes: List["Tree"],
-        # that_name: Optional[str],
     ) -> None:
         self.relation_data = relation_data
         self.node_descriptions = node_descriptions
-        # self.satisfies = relation_data.satisfies
-        # self.those_nodes = those_nodes
-        # self.that_name = that_name
 
     def __repr__(self):
         return f"{self.relation_data} {self.node_descriptions}"
@@ -288,31 +288,6 @@ class Condition(AbstractCondition):
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         for _ in self.relation_data.searchNodeIterator(t, self.node_descriptions):
             yield t
-
-    # def get_names(self) -> Generator[Optional[str], None, None]:
-    #     yield self.that_name
-    #
-
-    # def match(
-    #     self, these_nodes: List["Tree"], this_name: Optional[str]
-    # ) -> Tuple[List["Tree"], Dict[str, list]]:
-    #     backrefs_map: Dict[str, list] = {}
-    #
-    #     matched_pairs = []
-    #     for this_node in these_nodes:
-    #         for that_node in self.those_nodes:
-    #             if self.satisfies(this_node, that_node):
-    #                 matched_pairs.append((this_node, that_node))
-    #
-    #     res = [pair[0] for pair in matched_pairs]
-    #     if this_name is not None:
-    #         backrefs_map[this_name] = res
-    #
-    #     if self.that_name is not None:
-    #         that_name = self.that_name
-    #         backrefs_map[that_name] = [pair[1] for pair in matched_pairs]
-    #
-    #     return res, backrefs_map
 
 
 # ----------------------------------------------------------------------------
@@ -322,6 +297,34 @@ class Condition(AbstractCondition):
 class And(AbstractCondition):
     def __init__(self, *conds: AbstractCondition):
         self.conditions = list(conds)
+
+        self.names: set[str] = set()
+        # map(self.check_name, conds)
+        for cond in conds:
+            self.check_name(cond)
+
+    def check_name(self, cond: AbstractCondition):
+        if isinstance(cond, (Not, Opt)):
+            return self.check_name(cond.condition)
+        elif isinstance(cond, Condition):
+            if (name := getattr(cond.node_descriptions, "name", None)) is None:
+                return
+            if name in self.names:
+                raise ParseException(
+                    f"Variable '{name}' was declared twice in the scope of the same conjunction."
+                )
+            else:
+                self.names.add(name)
+        elif isinstance(cond, (And, Or)):
+            comm = cond.names & self.names
+            if comm:
+                raise ParseException(
+                    f"Variable '{comm.pop()}' was declared twice in the scope of the same conjunction."
+                )
+            else:
+                self.names.update(cond.names)
+        else:
+            assert False, f"Unexpected condition type: {type(cond)}"
 
     def __repr__(self):
         return " ".join(map(str, self.conditions))
@@ -334,81 +337,53 @@ class And(AbstractCondition):
             )
         yield from candidates
 
-    # def get_names(self) -> Generator[Optional[str], None, None]:
-    #     for condition in self.conditions:
-    #         for name in condition.get_names():
-    #             yield name
-
-    def append_condition(self, other_condition):
+    def append_condition(self, other_condition: AbstractCondition):
+        self.check_name(other_condition)
         self.conditions.append(other_condition)
 
-    def extend_conditions(self, other_conditions):
+    def extend_conditions(self, other_conditions: Iterable[AbstractCondition]):
+        for cond in other_conditions:
+            self.check_name(cond)
+        # map(self.check_name, other_conditions)
         self.conditions.extend(other_conditions)
-
-    # def match(
-    #     self, these_nodes: List["Tree"], this_name: Optional[str]
-    # ) -> Tuple[List["Tree"], Dict[str, list]]:
-    #     backrefs_map: Dict[str, list] = {}
-    #     old_these_nodes = these_nodes
-    #
-    #     for condition in self.conditions:
-    #         these_nodes, backrefs_map_cur_cond = condition.match(these_nodes, this_name)
-    #         backrefs_map.update(backrefs_map_cur_cond)
-    #
-    #         if not these_nodes:
-    #             return [], {key: [] for key in backrefs_map}
-    #
-    #     # if some of these_nodes are filtered out, ensure that backrefs_map for names in every sub-conditions only satisfy the rest of these_nodes
-    #     if len(these_nodes) < len(old_these_nodes) and any(name is not None for name in self.get_names()):
-    #         for condition in self.conditions:
-    #             _, backrefs_map_cur_cond = condition.match(these_nodes, this_name)
-    #             backrefs_map.update(backrefs_map_cur_cond)
-    #
-    #     return these_nodes, backrefs_map
 
 
 class Or(AbstractCondition):
     def __init__(self, *conds: AbstractCondition):
         self.conditions = list(conds)
+        self.names: set[str] = set()
+        for cond in conds:
+            self.store_name(cond)
+        # map(self.store_name, conds)
+
+    def store_name(self, cond: AbstractCondition):
+        if isinstance(cond, (Not, Opt)):
+            return self.store_name(cond.condition)
+        elif isinstance(cond, (Condition)):
+            if (name := getattr(cond.node_descriptions, "name", None)) is None:
+                return
+            self.names.add(name)
+        elif isinstance(cond, (And, Or)):
+            self.names.update(cond.names)
+        else:
+            assert False, f"Unexpected condition type: {type(cond)}"
 
     def __repr__(self):
-        return " || ".join(map(str, self.conditions))
+        return f"[ {' || '.join(map(str, self.conditions))} ]"
 
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         for condition in self.conditions:
             yield from condition.searchNodeIterator(t)
 
-    # def get_names(self) -> Generator[Optional[str], None, None]:
-    #     for condition in self.conditions:
-    #         for name in condition.get_names():
-    #             yield name
-    #
     def append_condition(self, other_condition):
         self.conditions.append(other_condition)
+        self.store_name(other_condition)
 
     def extend_conditions(self, other_conditions):
         self.conditions.extend(other_conditions)
-
-    #
-    # def match(
-    #     self, these_nodes: List["Tree"], this_name: Optional[str]
-    # ) -> Tuple[List["Tree"], Dict[str, list]]:
-    #     backrefs_map: Dict[str, list] = {}
-    #
-    #     res = []
-    #     for condition in self.conditions:
-    #         res_cur_cond, backrefs_map_cur_cond = condition.match(these_nodes, this_name)
-    #         for matched_this_node in res_cur_cond:
-    #             for i, node in enumerate(res):
-    #                 if matched_this_node is node:
-    #                     res.insert(i, matched_this_node)
-    #                     break
-    #             else:
-    #                 res.append(matched_this_node)
-    #
-    #         for name, nodes in backrefs_map_cur_cond.items():
-    #             backrefs_map[name] = backrefs_map.get(name, []) + nodes
-    #     return res, backrefs_map
+        for cond in other_conditions:
+            self.store_name(cond)
+        # map(self.store_name, other_conditions)
 
 
 class Not(AbstractCondition):
@@ -425,31 +400,6 @@ class Not(AbstractCondition):
             yield t
         else:
             return
-
-    # def __init__(self, condition):
-    #     self.condition = condition
-    #
-    #     for name in self.condition.get_names():
-    #         if name is not None:
-    #             raise SystemExit(
-    #                 "Error!!  It is invalid to name a node that is under the scope of a negation"
-    #                 f' operator. Please remove the assignment to "{name}".'
-    #             )
-
-    # def get_names(self) -> Generator[Optional[str], None, None]:
-    #     for name in self.condition.get_names():
-    #         yield name
-    #
-    # def match(
-    #     self, these_nodes: List["Tree"], this_name: Optional[str]
-    # ) -> Tuple[List["Tree"], Dict[str, list]]:
-    #     matched_nodes, _ = self.condition.match(these_nodes, this_name)
-    #     res = [
-    #         this_node
-    #         for this_node in these_nodes
-    #         if all(this_node is not matched_node for matched_node in matched_nodes)
-    #     ]
-    #     return res, {}
 
 
 class Opt(AbstractCondition):
@@ -468,18 +418,6 @@ class Opt(AbstractCondition):
         else:
             yield node
             yield from g
-
-    # def get_names(self) -> Generator[Optional[str], None, None]:
-    #     for name in self.condition.get_names():
-    #         yield name
-    #
-    # def match(
-    #     self, these_nodes: List["Tree"], this_name: Optional[str]
-    # ) -> Tuple[List["Tree"], Dict[str, list]]:
-    #     matched_nodes, backrefs_map = self.condition.match(these_nodes, this_name)
-    #     if len(matched_nodes) >= len(these_nodes):
-    #         these_nodes = matched_nodes
-    #     return these_nodes, backrefs_map
 
 
 """

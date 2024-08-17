@@ -5,6 +5,7 @@
 
 from typing import Union
 
+from pytregex.exceptions import ParseException
 from pytregex.tree import Tree
 from pytregex.tregex import TregexPattern
 
@@ -1024,6 +1025,12 @@ class TestTregex(BaseTmpl):
         # can't name a variable under a negation
         pattern = TregexPattern("__ ! > __=a")
         self.assertRaises(SystemExit, pattern.findall, "(A)")
+
+        self.assertRaises(ParseException, self.run_test, 'A=a < B=a < C=a', "")
+        self.assertRaises(ParseException, self.run_test, 'A=a < B=a', "")
+        self.assertRaises(ParseException, self.run_test, 'A=a [<B=a || <C=a]', "")
+        self.assertRaises(ParseException, self.run_test, 'A=a ?[<B=a || <C=a]', "")
+        self.assertRaises(ParseException, self.run_test, 'A=a ![<B=a || <C=a]', "")
 
     def test_numbered_sister(self):
         # this shouldn't mean anything
