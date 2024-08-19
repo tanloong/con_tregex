@@ -444,7 +444,7 @@ class Tree:
             if not node.isLeaf():
                 iterator = _chain(node.children, iterator)
 
-    def getLeaves(self, lst: list | None = None) -> list["Tree"]:
+    def getLeaves(self) -> list["Tree"]:
         """
         Gets the leaves of the tree.  All leaves nodes are returned as a list
         ordered by the natural left to right order of the tree.  None values,
@@ -459,3 +459,37 @@ class Tree:
         Return String of leaves spanned by this tree
         """
         return " ".join(leaf.tostring() for leaf in self.getLeaves() if leaf is not None)
+
+    def render(self) -> tuple[str]:
+        """
+        For sub-visited nodes, add the prefix to make the tree display user-friendly.
+        The key observation here is you can group the tree as follows when you're at the
+        root of the tree:
+        root_node
+        ├── level_1_0          // Group 1
+        │   ├── level_2_0      ...
+        │   │   ├── level_3_0  ...
+        │   │   └── level_3_1  ...
+        │   └── level_2_1      ...
+        ├── level_1_1          // Group 2
+        │   ├── level_2_2      ...
+        │   └── level_2_3      ...
+        └── level_1_2          // Group 3
+            └── level_2_4      ...
+        
+        The lines in Group 1 and 2 have `├── ` at the top and `|   ` at the rest while
+        those in Group 3 have `└── ` at the top and `    ` at the rest.
+        This observation is true recursively even when looking at the subtree rooted
+        at `level_1_0`.
+
+        Reference: https://github.com/astral-sh/uv/blob/6bc8639ce85075907aed67734c6d76539a72d319/crates/uv/src/commands/pip/tree.rs#L186
+        """
+        lines = deque()
+        for idx, kid in enumerate(self.children):
+            prefix_top, prefix_rest = ("└── ", "    ") if self.numChildren() - 1 == idx else ("├── ", "│   ")
+            prefixed_lines = deque()
+            for visited_idx, visited_line in enumerate(kid.render()):
+                prefixed_lines.append(f"{prefix_top if visited_idx == 0 else prefix_rest}{visited_line}")
+            lines.extend(prefixed_lines)
+        lines.appendleft(self.label if self.label is not None else "")
+        return tuple(lines)
