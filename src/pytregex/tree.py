@@ -460,7 +460,7 @@ class Tree:
         """
         return " ".join(leaf.tostring() for leaf in self.getLeaves() if leaf is not None)
 
-    def render(self) -> tuple[str]:
+    def _render(self, depth: Optional[int] = None, path: Optional[list] = None) -> tuple[str]:
         """
         For sub-visited nodes, add the prefix to make the tree display user-friendly.
         The key observation here is you can group the tree as follows when you're at the
@@ -476,7 +476,7 @@ class Tree:
         │   └── level_2_3      ...
         └── level_1_2          // Group 3
             └── level_2_4      ...
-        
+
         The lines in Group 1 and 2 have `├── ` at the top and `|   ` at the rest while
         those in Group 3 have `└── ` at the top and `    ` at the rest.
         This observation is true recursively even when looking at the subtree rooted
@@ -484,12 +484,23 @@ class Tree:
 
         Reference: https://github.com/astral-sh/uv/blob/6bc8639ce85075907aed67734c6d76539a72d319/crates/uv/src/commands/pip/tree.rs#L186
         """
+        if path is None:
+            path = []
+
+        if depth is not None and len(path) >= depth:
+            return tuple()
+        path.append(self.label)
+
         lines = deque()
         for idx, kid in enumerate(self.children):
             prefix_top, prefix_rest = ("└── ", "    ") if self.numChildren() - 1 == idx else ("├── ", "│   ")
             prefixed_lines = deque()
-            for visited_idx, visited_line in enumerate(kid.render()):
+            for visited_idx, visited_line in enumerate(kid._render(depth, path)):
                 prefixed_lines.append(f"{prefix_top if visited_idx == 0 else prefix_rest}{visited_line}")
             lines.extend(prefixed_lines)
         lines.appendleft(self.label if self.label is not None else "")
+        path.pop()
         return tuple(lines)
+
+    def render(self, depth: Optional[int] = None) -> str:
+        return "\n".join(self._render(depth=depth))
