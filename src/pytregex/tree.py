@@ -105,9 +105,7 @@ class Tree:
             raise TypeError(f"{type(self).__name__} indices must be integers, not {type(index).__name__}")
 
     def __bool__(self) -> bool:
-        if self.label is None and not self.children:
-            return False
-        return True
+        return not (self.label is None and not self.children)
 
     def __len__(self) -> int:
         return len(self.children)
@@ -460,7 +458,7 @@ class Tree:
         """
         return " ".join(leaf.tostring() for leaf in self.getLeaves() if leaf is not None)
 
-    def _render(self, depth: Optional[int] = None, path: Optional[list] = None) -> tuple[str]:
+    def _render(self, depth: Optional[int] = None, path: Optional[list] = None) -> list[str]:
         """
         For sub-visited nodes, add the prefix to make the tree display user-friendly.
         The key observation here is you can group the tree as follows when you're at the
@@ -488,19 +486,18 @@ class Tree:
             path = []
 
         if depth is not None and len(path) >= depth:
-            return tuple()
+            return []
         path.append(self.label)
 
-        lines = deque()
+        lines = [self.label if self.label is not None else ""]
         for idx, kid in enumerate(self.children):
             prefix_top, prefix_rest = ("└── ", "    ") if self.numChildren() - 1 == idx else ("├── ", "│   ")
-            prefixed_lines = deque()
-            for visited_idx, visited_line in enumerate(kid._render(depth, path)):
-                prefixed_lines.append(f"{prefix_top if visited_idx == 0 else prefix_rest}{visited_line}")
-            lines.extend(prefixed_lines)
-        lines.appendleft(self.label if self.label is not None else "")
+            lines.extend(
+                f"{prefix_top if visited_idx == 0 else prefix_rest}{visited_line}"
+                for visited_idx, visited_line in enumerate(kid._render(depth, path))
+            )
         path.pop()
-        return tuple(lines)
+        return lines
 
     def render(self, depth: Optional[int] = None) -> str:
         return "\n".join(self._render(depth=depth))
