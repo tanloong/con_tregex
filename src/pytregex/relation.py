@@ -4,12 +4,12 @@ from abc import ABC, abstractmethod
 from itertools import chain as _chain
 from typing import TYPE_CHECKING, Generator, Iterator, List, Optional
 
-from pytregex.collins_head_finder import CollinsHeadFinder
+from .collins_head_finder import CollinsHeadFinder
 
 if TYPE_CHECKING:
-    from pytregex.condition import NodeDescriptions
-    from pytregex.head_finder import HeadFinder
-    from pytregex.tree import Tree
+    from .condition import NodeDescriptions
+    from .head_finder import HeadFinder
+    from .tree import Tree
 
 # reference: https://nlp.stanford.edu/nlp/javadoc/javanlp-3.5.0/edu/stanford/nlp/trees/tregex/TregexPattern.html
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java

@@ -8,9 +8,8 @@ import os
 import sys
 from typing import List
 
-from utils import TregexProcedureResult
-
-from pytregex.tregex import TregexPattern
+from .tregex import TregexPattern
+from .utils import TregexProcedureResult
 
 
 class TregexUI:
@@ -188,7 +187,7 @@ class TregexUI:
             self.explain_parser.print_help()
             return True, None
 
-        from pytregex.glossary import explain
+        from .glossary import explain
 
         with contextlib.suppress(BrokenPipeError):
             if (ret := explain(options.relop)) is not None:
@@ -200,7 +199,7 @@ class TregexUI:
             self.pprint_parser.print_help()
             return True, None
 
-        from pytregex.tree import Tree
+        from .tree import Tree
 
         for t in Tree.fromstring(options.treestring):
             with contextlib.suppress(BrokenPipeError):

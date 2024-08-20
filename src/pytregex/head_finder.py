@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytregex.tree import Tree
+    from .tree import Tree
 
 
 class HeadFinder:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pytregex.abstract_collins_head_finder import AbstractCollinsHeadFinder
+from ...abstract_collins_head_finder import AbstractCollinsHeadFinder
 
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/international/pennchinese/ChineseHeadFinder.java
 # last modified at Apr 3, 2017 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/international/pennchinese/ChineseHeadFinder.java)

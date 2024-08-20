@@ -3,8 +3,8 @@ import re
 import warnings
 from typing import List, Never
 
-import pytregex.relation as _r
-from pytregex.condition import (
+from . import relation as _r
+from .condition import (
     NODE_ANY,
     NODE_ID,
     NODE_REGEX,
@@ -19,9 +19,9 @@ from pytregex.condition import (
     Opt,
     Or,
 )
-from pytregex.exceptions import ParseException
-from pytregex.ply import lex, yacc
-from pytregex.tree import Tree
+from .exceptions import ParseException
+from .ply import lex, yacc
+from .tree import Tree
 
 
 class TregexPattern:

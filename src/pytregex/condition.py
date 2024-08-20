@@ -3,13 +3,13 @@
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional, Sequence
+from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
 
-from pytregex.exceptions import ParseException
+from .exceptions import ParseException
 
 if TYPE_CHECKING:
-    from pytregex.relation import AbstractRelationData
-    from pytregex.tree import Tree
+    from .relation import AbstractRelationData
+    from .tree import Tree
 
 
 class NamedNodes:

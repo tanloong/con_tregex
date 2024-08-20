@@ -7,7 +7,7 @@ from io import StringIO
 from itertools import chain as _chain
 from typing import TYPE_CHECKING, Optional
 
-from pytregex.peekable import peekable
+from .peekable import peekable
 
 if TYPE_CHECKING:
     from .head_finder import HeadFinder
