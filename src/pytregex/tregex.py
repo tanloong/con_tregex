@@ -3,7 +3,7 @@ import re
 import warnings
 from typing import List, Never
 
-import pytregex.relation as R
+import pytregex.relation as _r
 from pytregex.condition import (
     NODE_ANY,
     NODE_ID,
@@ -25,65 +25,65 @@ from pytregex.tree import Tree
 
 
 class TregexPattern:
-    RELATION_MAP: dict[str, type[R.AbstractRelation]] = {
-        "<": R.PARENT_OF,
-        ">": R.CHILD_OF,
-        "<<": R.DOMINATES,
-        ">>": R.DOMINATED_BY,
-        ">:": R.ONLY_CHILD_OF,
-        "<:": R.HAS_ONLY_CHILD,
-        ">`": R.LAST_CHILD_OF_PARENT,
-        ">-": R.LAST_CHILD_OF_PARENT,
-        "<`": R.PARENT_OF_LAST_CHILD,
-        "<-": R.PARENT_OF_LAST_CHILD,
-        ">,": R.LEFTMOST_CHILD_OF,
-        "<,": R.HAS_LEFTMOST_CHILD,
-        "<<`": R.HAS_RIGHTMOST_DESCENDANT,
-        "<<-": R.HAS_RIGHTMOST_DESCENDANT,
-        ">>`": R.RIGHTMOST_DESCENDANT_OF,
-        ">>-": R.RIGHTMOST_DESCENDANT_OF,
-        ">>,": R.LEFTMOST_DESCENDANT_OF,
-        "<<,": R.HAS_LEFTMOST_DESCENDANT,
-        "$..": R.LEFT_SISTER_OF,
-        "$++": R.LEFT_SISTER_OF,
-        "$--": R.RIGHT_SISTER_OF,
-        "$,,": R.RIGHT_SISTER_OF,
-        "$.": R.IMMEDIATE_LEFT_SISTER_OF,
-        "$+": R.IMMEDIATE_LEFT_SISTER_OF,
-        "$-": R.IMMEDIATE_RIGHT_SISTER_OF,
-        "$,": R.IMMEDIATE_RIGHT_SISTER_OF,
-        "$": R.SISTER_OF,
-        "==": R.EQUALS,
-        "<=": R.PARENT_EQUALS,
-        "<<:": R.UNARY_PATH_ANCESTOR_OF,
-        ">>:": R.UNARY_PATH_DESCEDANT_OF,
-        ":": R.PATTERN_SPLITTER,
-        ">#": R.IMMEDIATELY_HEADS,
-        "<#": R.IMMEDIATELY_HEADED_BY,
-        ">>#": R.HEADS,
-        "<<#": R.HEADED_BY,
-        "..": R.PRECEDES,
-        ",,": R.FOLLOWS,
-        ".": R.IMMEDIATELY_PRECEDES,
-        ",": R.IMMEDIATELY_FOLLOWS,
-        "<<<": R.ANCESTOR_OF_LEAF,
-        "<<<-": R.ANCESTOR_OF_LEAF,
+    RELATION_MAP: dict[str, type[_r.AbstractRelation]] = {
+        "<": _r.PARENT_OF,
+        ">": _r.CHILD_OF,
+        "<<": _r.DOMINATES,
+        ">>": _r.DOMINATED_BY,
+        ">:": _r.ONLY_CHILD_OF,
+        "<:": _r.HAS_ONLY_CHILD,
+        ">`": _r.LAST_CHILD_OF_PARENT,
+        ">-": _r.LAST_CHILD_OF_PARENT,
+        "<`": _r.PARENT_OF_LAST_CHILD,
+        "<-": _r.PARENT_OF_LAST_CHILD,
+        ">,": _r.LEFTMOST_CHILD_OF,
+        "<,": _r.HAS_LEFTMOST_CHILD,
+        "<<`": _r.HAS_RIGHTMOST_DESCENDANT,
+        "<<-": _r.HAS_RIGHTMOST_DESCENDANT,
+        ">>`": _r.RIGHTMOST_DESCENDANT_OF,
+        ">>-": _r.RIGHTMOST_DESCENDANT_OF,
+        ">>,": _r.LEFTMOST_DESCENDANT_OF,
+        "<<,": _r.HAS_LEFTMOST_DESCENDANT,
+        "$..": _r.LEFT_SISTER_OF,
+        "$++": _r.LEFT_SISTER_OF,
+        "$--": _r.RIGHT_SISTER_OF,
+        "$,,": _r.RIGHT_SISTER_OF,
+        "$.": _r.IMMEDIATE_LEFT_SISTER_OF,
+        "$+": _r.IMMEDIATE_LEFT_SISTER_OF,
+        "$-": _r.IMMEDIATE_RIGHT_SISTER_OF,
+        "$,": _r.IMMEDIATE_RIGHT_SISTER_OF,
+        "$": _r.SISTER_OF,
+        "==": _r.EQUALS,
+        "<=": _r.PARENT_EQUALS,
+        "<<:": _r.UNARY_PATH_ANCESTOR_OF,
+        ">>:": _r.UNARY_PATH_DESCEDANT_OF,
+        ":": _r.PATTERN_SPLITTER,
+        ">#": _r.IMMEDIATELY_HEADS,
+        "<#": _r.IMMEDIATELY_HEADED_BY,
+        ">>#": _r.HEADS,
+        "<<#": _r.HEADED_BY,
+        "..": _r.PRECEDES,
+        ",,": _r.FOLLOWS,
+        ".": _r.IMMEDIATELY_PRECEDES,
+        ",": _r.IMMEDIATELY_FOLLOWS,
+        "<<<": _r.ANCESTOR_OF_LEAF,
+        "<<<-": _r.ANCESTOR_OF_LEAF,
     }
 
-    REL_W_STR_ARG_MAP: dict[str, type[R.AbstractRelation]] = {
-        "<+": R.UNBROKEN_CATEGORY_DOMINATES,
-        ">+": R.UNBROKEN_CATEGORY_IS_DOMINATED_BY,
-        ".+": R.UNBROKEN_CATEGORY_PRECEDES,
-        ",+": R.UNBROKEN_CATEGORY_FOLLOWS,
+    REL_W_STR_ARG_MAP: dict[str, type[_r.AbstractRelation]] = {
+        "<+": _r.UNBROKEN_CATEGORY_DOMINATES,
+        ">+": _r.UNBROKEN_CATEGORY_IS_DOMINATED_BY,
+        ".+": _r.UNBROKEN_CATEGORY_PRECEDES,
+        ",+": _r.UNBROKEN_CATEGORY_FOLLOWS,
     }
 
-    REL_W_NUM_ARG_MAP: dict[str, type[R.AbstractRelation]] = {
-        ">": R.ITH_CHILD_OF,
-        ">-": R.ITH_CHILD_OF,
-        "<": R.HAS_ITH_CHILD,
-        "<-": R.HAS_ITH_CHILD,
-        "<<<": R.ANCESTOR_OF_ITH_LEAF,
-        "<<<-": R.ANCESTOR_OF_ITH_LEAF,
+    REL_W_NUM_ARG_MAP: dict[str, type[_r.AbstractRelation]] = {
+        ">": _r.ITH_CHILD_OF,
+        ">-": _r.ITH_CHILD_OF,
+        "<": _r.HAS_ITH_CHILD,
+        "<-": _r.HAS_ITH_CHILD,
+        "<<<": _r.ANCESTOR_OF_ITH_LEAF,
+        "<<<-": _r.ANCESTOR_OF_ITH_LEAF,
     }
 
     tokens = [
@@ -341,7 +341,7 @@ class TregexPattern:
             relation_data : RELATION
             """
             symbol = p[1]
-            p[0] = R.RelationData(self.RELATION_MAP[symbol], symbol)
+            p[0] = _r.RelationData(self.RELATION_MAP[symbol], symbol)
 
         # 2.2 REL_W_STR_ARG
         def p_rel_w_str_arg_lparen_node_descriptions_rparen(p):
@@ -349,7 +349,7 @@ class TregexPattern:
             relation_data : REL_W_STR_ARG '(' node_descriptions ')'
             """
             symbol = p[1]
-            p[0] = R.RelationWithStrArgData(self.REL_W_STR_ARG_MAP[symbol], symbol, arg=p[3])
+            p[0] = _r.RelationWithStrArgData(self.REL_W_STR_ARG_MAP[symbol], symbol, arg=p[3])
 
         # 2.3 REL_W_NUM_ARG
         def p_relation_number(p):
@@ -361,7 +361,7 @@ class TregexPattern:
 
             if rel_key.endswith("-"):
                 num = f"-{num}"
-            p[0] = R.RelationWithNumArgData(self.REL_W_NUM_ARG_MAP[rel_key], symbol, arg=int(num))
+            p[0] = _r.RelationWithNumArgData(self.REL_W_NUM_ARG_MAP[rel_key], symbol, arg=int(num))
 
         def p_not_condition(p):
             """
@@ -429,17 +429,17 @@ class TregexPattern:
             and_conditions_multi_relation : MULTI_RELATION "{" node_descriptions_list "}"
             """
             rel_key = "<"
-            rel_op = R.HAS_ITH_CHILD
+            rel_op = _r.HAS_ITH_CHILD
             node_descriptions_list = p[3]
 
             conditions: list[AbstractCondition] = []
             for i, node_descriptions in enumerate(node_descriptions_list, 1):
-                multi_relation_data = R.RelationWithNumArgData(rel_op, rel_key, arg=i)
+                multi_relation_data = _r.RelationWithNumArgData(rel_op, rel_key, arg=i)
                 conditions.append(
                     Condition(relation_data=multi_relation_data, node_descriptions=node_descriptions)
                 )
 
-            multi_relation_data = R.RelationWithNumArgData(rel_op, rel_key, arg=i + 1)
+            multi_relation_data = _r.RelationWithNumArgData(rel_op, rel_key, arg=i + 1)
             node_descriptions = NodeDescriptions(NodeDescription(NODE_ANY, self.t_BLANK))
             conditions.append(
                 Not(Condition(relation_data=multi_relation_data, node_descriptions=node_descriptions))
