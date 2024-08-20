@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-import contextlib
-import sys
+from typing import Optional, Tuple
 
-
-def stdout(s: str):
-    with contextlib.suppress(BrokenPipeError):
-        sys.stdout.write(s)
+# For all the procedures in TregexUI, return a tuple as the result The first
+# element bool indicates whether the procedure succeeds The second element is
+# the error message if it fails.
+TregexProcedureResult = Tuple[bool, Optional[str]]

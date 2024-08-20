@@ -1,115 +1,134 @@
 #!/usr/bin/env python3
 
 import argparse
+import contextlib
 import glob
 import logging
 import os
 import sys
-from typing import List, Optional, Tuple
+from typing import List
+
+from utils import TregexProcedureResult
 
 from pytregex.tregex import TregexPattern
-from pytregex.utils import stdout
-
-# For all the procedures in TregexUI, return a tuple as the result The first
-# element bool indicates whether the procedure succeeds The second element is
-# the error message if it fails.
-TregexProcedureResult = Tuple[bool, Optional[str]]
 
 
 class TregexUI:
     def __init__(self) -> None:
         self.args_parser: argparse.ArgumentParser = self.create_args_parser()
-        self.options: argparse.Namespace = argparse.Namespace()
+
+    def __add_log_levels(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--quiet",
+            dest="is_quiet",
+            action="store_true",
+            default=False,
+            help="disable all loggings",
+        )
+        parser.add_argument(
+            "--verbose",
+            dest="is_verbose",
+            action="store_true",
+            default=False,
+            help="enable verbose loggings",
+        )
 
     def create_args_parser(self) -> argparse.ArgumentParser:
-        args_parser = argparse.ArgumentParser(
-            prog="pytregex",
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            add_help=False,
+        parser = argparse.ArgumentParser(prog="pytregex", formatter_class=argparse.RawDescriptionHelpFormatter)
+        parser.add_argument(
+            "--version",
+            action="store_true",
+            default=False,
+            help="show version and exit",
         )
-        args_parser.add_argument("--help", action="help", help="Show this help message and exit")
-        args_parser.add_argument("pattern", help="Tregex pattern")
-        args_parser.add_argument(
+        self.__add_log_levels(parser)
+        subparsers: argparse._SubParsersAction = parser.add_subparsers(title="commands", dest="command")
+        self.pattern_parser = self.create_pattern_parser(subparsers)
+        self.explain_parser = self.create_explain_parser(subparsers)
+        self.pprint_parser = self.create_pprint_parser(subparsers)
+        return parser
+
+    def create_pattern_parser(self, subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+        pattern_parser = subparsers.add_parser(
+            "pattern", help="match tregex pattern against constituency trees", add_help=False
+        )
+
+        pattern_parser.add_argument("pattern", nargs="?", help="Tregex pattern")
+        pattern_parser.add_argument(
+            "--help",
+            action="help",
+            help="Show this message and exit.",
+        )
+        pattern_parser.add_argument(
             "-filter",
             action="store_true",
             dest="is_stdin",
             default=False,
-            help="read tree input from stdin",
+            help="Read tree input from stdin.",
         )
-        args_parser.add_argument(
+        pattern_parser.add_argument(
             "-C",
             action="store_true",
             dest="is_count",
             default=False,
-            help="suppresses printing of matches, so only the number of matches is printed.",
+            help="Suppresses printing of matches, so only the number of matches is printed.",
         )
-        args_parser.add_argument(
+        pattern_parser.add_argument(
             "-h",
             metavar="<handle>",
             action="extend",
             nargs="+",
             dest="handles",
             help=(
-                "for each node-handle specified, the node matched and given that handle will be"
+                "For each node-handle specified, the node matched and given that handle will be"
                 " printed. Multiple nodes can be printed by using this option multiple times on"
                 " a single command line."
             ),
         )
-        args_parser.add_argument(
+        pattern_parser.add_argument(
             "--version",
             action="store_true",
             default=False,
             help="Show version and exit.",
         )
-        args_parser.add_argument(
-            "--verbose",
-            action="store_true",
-            dest="is_verbose",
-            default=False,
-            help="Give verbose debugging output.",
-        )
-        args_parser.add_argument(
-            "--quiet",
-            action="store_true",
-            dest="is_quiet",
-            default=False,
-            help="Stop pytregex from print anything.",
-        )
-        return args_parser
 
-    def parse_args(self, argv: List[str]) -> TregexProcedureResult:
-        idx: Optional[int] = None
-        if "--" in argv[1:]:
-            idx = argv.index("--")
-        if idx is not None:
-            options, ipath_list = self.args_parser.parse_args(argv[1:idx]), argv[idx + 1 :]
-        else:
-            options, ipath_list = self.args_parser.parse_known_args(argv[1:])
+        self.__add_log_levels(pattern_parser)
+        pattern_parser.set_defaults(func=self.run_pattern_args)
+        return pattern_parser
 
-        if options.is_verbose and options.is_quiet:
-            return False, "--verbose and --quiet cannot be set at the same time"
-        if options.is_verbose:
-            logging_level = logging.DEBUG
-        elif options.is_quiet:
-            logging_level = logging.WARNING
-        else:
-            logging_level = logging.INFO
-        logging.basicConfig(format="%(message)s", level=logging_level)
+    def create_explain_parser(self, subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+        explain_parser = subparsers.add_parser("explain", help="explain the given relation operator")
+        explain_parser.add_argument("relop", nargs="?", help="relation operator to explain")
+        self.__add_log_levels(explain_parser)
+        explain_parser.set_defaults(func=self.run_explain_args)
+        return explain_parser
+
+    def create_pprint_parser(self, subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+        pprint_parser = subparsers.add_parser("pprint", help="pretty print the give constituency tree")
+        pprint_parser.add_argument("treestring", nargs="?", help="the constituency tree to print")
+        self.__add_log_levels(pprint_parser)
+        pprint_parser.set_defaults(func=self.run_pprint_args)
+        return pprint_parser
+
+    def run_pattern_args(self, options: argparse.Namespace) -> TregexProcedureResult:
+        if options.pattern is None:
+            self.pattern_parser.print_help()
+            return True, None
 
         self.tree_string = None
         self.verified_ifile_list = None
         if options.is_stdin:
-            if ipath_list:
+            if self.ipath_list:
                 return (
                     False,
                     "Input files are unaccepted when reading tree input from stdin: \n\n{}".format(
-                        "\n".join(ipath_list)
+                        "\n".join(self.ipath_list)
                     ),
                 )
             self.tree_string = sys.stdin.read()
         else:
             verified_ifile_list = []
-            for path in ipath_list:
+            for path in self.ipath_list:
                 if os.path.isfile(path):
                     verified_ifile_list.append(path)
                 elif os.path.isdir(path):
@@ -121,15 +140,12 @@ class TregexUI:
             if verified_ifile_list:
                 self.verified_ifile_list = verified_ifile_list
 
-        self.options = options
-        return True, None
-
-    def run_matcher(self) -> TregexProcedureResult:
         default_tree_string = (
             "(VP (VP (VBZ Try) (NP (NP (DT this) (NN wine)) (CC and) (NP (DT these) (NNS"
             " snails)))) (PUNCT .))"
         )
 
+        # run matcher
         if self.verified_ifile_list is not None:
             forests = []
             for ifile in self.verified_ifile_list:
@@ -144,34 +160,74 @@ class TregexUI:
             logging.debug(f"No tree input. Using the default {default_tree_string}.")
             tree_string = default_tree_string
 
-        pattern = TregexPattern(self.options.pattern)
+        pattern = TregexPattern(options.pattern)
         matches = pattern.findall(tree_string)
 
-        if self.options.handles:
+        if options.handles:
             logging.debug("Printing handles...")
-            for handle in self.options.handles:
+            for handle in options.handles:
                 handled_nodes = pattern.get_nodes(handle)
                 for node in handled_nodes:
-                    stdout(f"{node}\n")
+                    with contextlib.suppress(BrokenPipeError):
+                        sys.stdout.write(f"{node}\n")
         else:
-            if self.options.is_count:
-                stdout(f"{len(matches)}\n")
+            if options.is_count:
+                with contextlib.suppress(BrokenPipeError):
+                    sys.stdout.write(f"{len(matches)}\n")
                 return True, None
             logging.debug("Printing matches...")
             for m in matches:
-                stdout(f"{m}\n")
+                with contextlib.suppress(BrokenPipeError):
+                    sys.stdout.write(f"{m}\n")
         logging.info(f"There were {len(matches)} matches in total.")
 
         return True, None
 
-    def run(self) -> TregexProcedureResult:
-        if self.options.version:
-            return self.show_version()
-        elif self.options.pattern:
-            return self.run_matcher()
-        else:
-            self.args_parser.print_help()
+    def run_explain_args(self, options: argparse.Namespace) -> TregexProcedureResult:
+        if options.relop is None:
+            self.explain_parser.print_help()
             return True, None
+
+        from pytregex.glossary import explain
+
+        with contextlib.suppress(BrokenPipeError):
+            if (ret := explain(options.relop)) is not None:
+                sys.stdout.write(f"{ret}\n")
+        return True, None
+
+    def run_pprint_args(self, options: argparse.Namespace) -> TregexProcedureResult:
+        if options.treestring is None:
+            self.pprint_parser.print_help()
+            return True, None
+
+        from pytregex.tree import Tree
+
+        for t in Tree.fromstring(options.treestring):
+            with contextlib.suppress(BrokenPipeError):
+                sys.stdout.write(f"{t.render()}\n")
+        return True, None
+
+    def run_args(self, argv: List[str]) -> TregexProcedureResult:
+        options, self.ipath_list = self.args_parser.parse_known_args(argv[1:])
+
+        if options.version:
+            return self.show_version()
+
+        if options.is_verbose and options.is_quiet:
+            return False, "logging cannot be quiet and verbose at the same time"
+
+        if options.is_quiet:
+            logging.basicConfig(format="%(message)s", level=logging.CRITICAL)
+        elif options.is_verbose:
+            logging.basicConfig(format="%(message)s", level=logging.DEBUG)
+        else:
+            logging.basicConfig(format="%(message)s", level=logging.INFO)
+
+        if (func := getattr(options, "func", None)) is not None:
+            return func(options)
+
+        self.args_parser.print_help()
+        return True, None
 
     def show_version(self) -> TregexProcedureResult:
         from about import __version__
@@ -182,11 +238,7 @@ class TregexUI:
 
 def main() -> None:
     ui = TregexUI()
-    success, err_msg = ui.parse_args(sys.argv)
-    if not success:
-        logging.critical(err_msg)
-        sys.exit(1)
-    success, err_msg = ui.run()
+    success, err_msg = ui.run_args(sys.argv)
     if not success:
         logging.critical(err_msg)
         sys.exit(1)
