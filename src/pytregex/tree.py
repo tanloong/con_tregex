@@ -1,7 +1,5 @@
 # translated from [CoreNLP](https://github.com/stanfordnlp/CoreNLP/blob/139893242878ecacde79b2ba1d0102b855526610/src/edu/stanford/nlp/trees/Tree.java)
 
-# TODO use camel case to match java tregex's convention
-
 import re
 from collections import deque
 from collections.abc import Generator, Iterator

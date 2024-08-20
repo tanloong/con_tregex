@@ -272,7 +272,6 @@ class AbstractCondition(ABC):
     def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
         raise NotImplementedError
 
-
 class Condition(AbstractCondition):
     def __init__(
         self,
@@ -292,6 +291,10 @@ class Condition(AbstractCondition):
 
 # ----------------------------------------------------------------------------
 #                                   Logic
+
+
+class AbstractLogicCondition(AbstractCondition):
+    ...
 
 
 class And(AbstractCondition):

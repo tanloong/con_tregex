@@ -978,31 +978,28 @@ class TestTregex(BaseTmpl):
     #     assertFalse(matcher.find());
 
     def test_nonsense(self):
-        # TODO: add this in readme: pytregex indeed allow this. in pytregex later naming will override previous ones, so only the last time of naming will be remembered. pytregex chooses this different behavior due to the fact that in pytregex disallowing duplicated renaming in a conjunction will also disallow others patterns that are converted to conjunction. For example, in 'A ?[< B=foo || < C=foo]', the '?[< B=foo || < C=foo]' will be considered as a (1) optional disjunction, and then (2) a single condition, and then (3) a conjunction containing only that one condition. The two 'foo' will be seen as duplicated naming and disallowed.
-
         # can't name a variable twice
-        # pattern = TregexPattern("foo=a $ bar=a")
-        # self.assertRaises(SystemExit, pattern.findall, "(A)")
+        pattern = TregexPattern("foo=a $ bar=a")
+        self.assertRaises(ParseException, pattern.findall, "(A)")
 
         # another way of doing the same thing
-        # pattern = TregexPattern("foo=a > bar=b $ ~a=b")
-        # self.assertRaises(SystemExit, pattern.findall, "(A)")
+        pattern = TregexPattern("foo=a > bar=b $ ~a=b")
+        self.assertRaises(ParseException, pattern.findall, "(A)")
 
         # ... but this should work
         TregexPattern("foo=a > bar=b $ ~a").findall("(A)")
 
         # can't link to a variable that doesn't exist yet
         pattern = TregexPattern("~a $- (bar=a $- foo)")
-        self.assertRaises(SystemExit, pattern.findall, "(A)")
+        self.assertRaises(ParseException, pattern.findall, "(A)")
 
-        # TODO
         # can't reference a variable that doesn't exist yet
         # pattern = TregexPattern("=a $- (bar=a $- foo)")
-        # self.assertRaises(SystemExit, pattern.findall, '(A)')
+        # self.assertRaises(ParseException, pattern.findall, '(A)')
 
         # you'd have to be really demented to do this
         pattern = TregexPattern("~a=a $- (bar=b $- foo)")
-        self.assertRaises(SystemExit, pattern.findall, "(A)")
+        self.assertRaises(ParseException, pattern.findall, "(A)")
 
         # This should work... no reason this would barf
         TregexPattern("foo=a : ~a").findall("(A)")
@@ -1024,7 +1021,7 @@ class TestTregex(BaseTmpl):
 
         # can't name a variable under a negation
         pattern = TregexPattern("__ ! > __=a")
-        self.assertRaises(SystemExit, pattern.findall, "(A)")
+        self.assertRaises(ParseException, pattern.findall, "(A)")
 
         self.assertRaises(ParseException, self.run_test, 'A=a < B=a < C=a', "")
         self.assertRaises(ParseException, self.run_test, 'A=a < B=a', "")
