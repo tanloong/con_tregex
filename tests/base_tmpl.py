@@ -29,12 +29,9 @@ class BaseTmpl(TestCase):
     def setUp(self):
         logging.info("=" * 60)
         logging.info(f"{self.id()} start")
-        self.stdout = io.StringIO()
-        self.stdout_orig, sys.stdout = sys.stdout, self.stdout
         # tracemalloc.start()
 
     def tearDown(self):
-        sys.stdout = self.stdout_orig
         logging.info(f"{self.id()} finish")
         gc.collect()
 
