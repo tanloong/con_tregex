@@ -152,9 +152,8 @@ class TregexPattern:
             raise SystemExit(
                 f'Error!!  There is no matched node "{name}"!  Did you specify such a label in the pattern?'
             ) from e
-        else:
-            assert backref.nodes is not None
-            return backref.nodes
+        assert backref.nodes is not None
+        return backref.nodes
 
     def _reset_lexer_state(self) -> None:
         """
@@ -301,7 +300,7 @@ class TregexPattern:
 
             backref = BackRef(node_descriptions, None)
             self.backref_table[name] = backref
-            node_descriptions.set_backref(backref, name)
+            node_descriptions.set_name(name)
 
             p[0] = node_descriptions
 
@@ -552,7 +551,7 @@ class TregexPattern:
             nodes = []
             for tree in trees:
                 for node_descriptions in p[1]:
-                    nodes.extend(node_descriptions.searchNodeIterator(tree))
+                    nodes.extend(node_descriptions.searchNodeIterator(tree, self.backref_table))
             p[0] = nodes
 
         def p_error(p) -> Never:

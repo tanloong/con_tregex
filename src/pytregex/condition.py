@@ -2,7 +2,7 @@
 
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from copy import deepcopy
 from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
 
 from .exceptions import ParseException
@@ -33,10 +33,10 @@ class NodeDescription(NamedTuple):
         return self.value
 
 
-@dataclass
 class BackRef:
-    node_descriptions: "NodeDescriptions"
-    nodes: Optional[list["Tree"]]
+    def __init__(self, node_descriptions: "NodeDescriptions", nodes: Optional[list["Tree"]]) -> None:
+        self.node_descriptions = node_descriptions
+        self.nodes = nodes
 
 
 class NodeDescriptions:
@@ -46,7 +46,6 @@ class NodeDescriptions:
         under_negation: bool = False,
         use_basic_cat: bool = False,
         condition: Optional["And"] = None,
-        backref: Optional[BackRef] = None,
         name: Optional[str] = None,
     ) -> None:
         self.descriptions = list(node_descriptions)
@@ -54,36 +53,32 @@ class NodeDescriptions:
         self.use_basic_cat = use_basic_cat
 
         self.condition = condition
-        self.backref = backref
         self.name = name
 
     def __iter__(self) -> Iterator[NodeDescription]:
         return iter(self.descriptions)
 
     def __repr__(self) -> str:
+        prefix = f"{'!' if self.under_negation else ''}{'@' if self.use_basic_cat else ''}"
+        ret = f"{prefix}{'|'.join(map(str, self.descriptions))}"
+
         if self.name is not None:
-            ret = f"={self.name}"
-        else:
-            prefix = f"{'!' if self.under_negation else ''}{'@' if self.use_basic_cat else ''}"
-            ret = f"{prefix}{'|'.join(map(str, self.descriptions))}"
+            ret = f"{ret}={self.name}"
 
         if self.condition is not None:
             ret = f"({ret} {self.condition})"
         return ret
 
-    def set_backref(
-        self,
-        backref: BackRef,
-        name: str,
-    ) -> None:
-        self.backref = backref
+    def set_name(self, name: str) -> None:
         self.name = name
 
     def set_condition(self, condition: "AbstractCondition") -> None:
         if self.condition is None:
-            self.condition = And(condition)
-        else:
+            self.condition = condition
+        elif isinstance(self.condition, And):
             self.condition.append_condition(condition)
+        else:
+            self.condition = And(self.condition, condition)
 
     def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
@@ -110,25 +105,27 @@ class NodeDescriptions:
             for desc in self.descriptions
         )
 
-    def satisfies(self, t: "Tree") -> bool:
-        if self.condition is None:
-            return any(
-                desc.op.satisfies(
-                    t, desc.value, under_negation=self.under_negation, use_basic_cat=self.use_basic_cat
-                )
-                for desc in self.descriptions
-            )
-        else:
-            cond_satisfies = self.condition.satisfies
-            return any(
-                desc.op.satisfies(
-                    t, desc.value, under_negation=self.under_negation, use_basic_cat=self.use_basic_cat
-                )
-                and cond_satisfies(t)
-                for desc in self.descriptions
-            )
+    # def satisfies(self, t: "Tree", backref_table: dict[str, BackRef]) -> bool:
+    #     if self.condition is None:
+    #         return any(
+    #             desc.op.satisfies(
+    #                 t, desc.value, under_negation=self.under_negation, use_basic_cat=self.use_basic_cat
+    #             )
+    #             for desc in self.descriptions
+    #         )
+    #     else:
+    #         cond_satisfies = self.condition.satisfies
+    #         return any(
+    #             desc.op.satisfies(
+    #                 t, desc.value, under_negation=self.under_negation, use_basic_cat=self.use_basic_cat
+    #             )
+    #             and cond_satisfies(t, backref_table)
+    #             for desc in self.descriptions
+    #         )
 
-    def searchNodeIterator(self, t: "Tree", *, recursive: bool = True) -> Generator["Tree", None, None]:
+    def searchNodeIterator(
+        self, t: "Tree", backref_table: dict[str, BackRef], *, recursive: bool = True
+    ) -> Generator["Tree", None, None]:
         node_gen = t.preorder_iter() if recursive else (t for _ in range(1))
         node_gen = filter(self._satisfies_ignore_condition, node_gen)
 
@@ -142,14 +139,14 @@ class NodeDescriptions:
                 )
 
             cond_search = self.condition.searchNodeIterator
-            ret = (m for node in node_gen for m in cond_search(node))
+            ret = (m for node in node_gen for m in cond_search(node, backref_table))
 
-        if self.backref is not None:
+        if self.name is not None:
             ret = list(ret)
-            if self.backref.nodes is not None:
-                self.backref.nodes.extend(ret)
+            if backref_table[self.name].nodes is not None:
+                backref_table[self.name].nodes.extend(ret)
             else:
-                self.backref.nodes = ret
+                backref_table[self.name].nodes = ret
         yield from ret
 
 
@@ -260,17 +257,18 @@ class AbstractCondition(ABC):
     def __repr__(self):
         raise NotImplementedError
 
-    def satisfies(self, t: "Tree") -> bool:
+    def satisfies(self, t: "Tree", backref_table: dict[str, BackRef]) -> bool:
         try:
-            next(self.searchNodeIterator(t))
+            next(self.searchNodeIterator(t, backref_table))
         except StopIteration:
             return False
         else:
             return True
 
     @abstractmethod
-    def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
+    def searchNodeIterator(self, t: "Tree", backref_table: dict[str, BackRef]) -> Generator["Tree", None, None]:
         raise NotImplementedError
+
 
 class Condition(AbstractCondition):
     def __init__(
@@ -284,8 +282,8 @@ class Condition(AbstractCondition):
     def __repr__(self):
         return f"{self.relation_data} {self.node_descriptions}"
 
-    def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
-        for _ in self.relation_data.searchNodeIterator(t, self.node_descriptions):
+    def searchNodeIterator(self, t: "Tree", backref_table: dict[str, BackRef]) -> Generator["Tree", None, None]:
+        for _ in self.relation_data.searchNodeIterator(t, self.node_descriptions, backref_table):
             yield t
 
 
@@ -293,8 +291,7 @@ class Condition(AbstractCondition):
 #                                   Logic
 
 
-class AbstractLogicCondition(AbstractCondition):
-    ...
+class AbstractLogicCondition(AbstractCondition): ...
 
 
 class And(AbstractCondition):
@@ -332,12 +329,20 @@ class And(AbstractCondition):
     def __repr__(self):
         return " ".join(map(str, self.conditions))
 
-    def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
+    def searchNodeIterator(self, t: "Tree", backref_table: dict[str, BackRef]) -> Generator["Tree", None, None]:
+        old_backref_table = deepcopy(backref_table)
+
         candidates = (t,)
         for condition in self.conditions:
             candidates = tuple(
-                node for candidate in candidates for node in condition.searchNodeIterator(candidate)
+                node
+                for candidate in candidates
+                for node in condition.searchNodeIterator(candidate, backref_table)
             )
+            if not candidates:
+                backref_table.clear()
+                backref_table.update(old_backref_table)
+                return
         yield from candidates
 
     def append_condition(self, other_condition: AbstractCondition):
@@ -374,9 +379,9 @@ class Or(AbstractCondition):
     def __repr__(self):
         return f"[ {' || '.join(map(str, self.conditions))} ]"
 
-    def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
+    def searchNodeIterator(self, t: "Tree", backref_table: dict[str, BackRef]) -> Generator["Tree", None, None]:
         for condition in self.conditions:
-            yield from condition.searchNodeIterator(t)
+            yield from condition.searchNodeIterator(t, backref_table)
 
     def append_condition(self, other_condition):
         self.conditions.append(other_condition)
@@ -396,9 +401,14 @@ class Not(AbstractCondition):
     def __repr__(self):
         return f"!{self.condition}"
 
-    def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
+    def searchNodeIterator(self, t: "Tree", backref_table: dict[str, BackRef]) -> Generator["Tree", None, None]:
+        # If sub-condition matchesm 'not sub-condition' doesn't. Sub-condition
+        # might modify the backrefs_map on successful match, but since
+        # 'not sub-condition' doesn't match, these changes shouldn't be visible
+        # to the outside world.
+        copy = deepcopy(backref_table)
         try:
-            next(self.condition.searchNodeIterator(t))
+            next(self.condition.searchNodeIterator(t, copy))
         except StopIteration:
             yield t
         else:
@@ -412,8 +422,8 @@ class Opt(AbstractCondition):
     def __repr__(self):
         return f"?[{self.condition}]"
 
-    def searchNodeIterator(self, t: "Tree") -> Generator["Tree", None, None]:
-        g = self.condition.searchNodeIterator(t)
+    def searchNodeIterator(self, t: "Tree", backref_table: dict[str, BackRef]) -> Generator["Tree", None, None]:
+        g = self.condition.searchNodeIterator(t, backref_table)
         try:
             node = next(g)
         except StopIteration:

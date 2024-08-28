@@ -5,6 +5,7 @@ from itertools import chain as _chain
 from typing import TYPE_CHECKING, Generator, Iterator, List, Optional
 
 from .collins_head_finder import CollinsHeadFinder
+from .condition import BackRef
 
 if TYPE_CHECKING:
     from .condition import NodeDescriptions
@@ -801,7 +802,7 @@ class AbstractRelationData(ABC):
 
     @abstractmethod
     def searchNodeIterator(
-        self, t: "Tree", node_descriptions: "NodeDescriptions"
+        self, t: "Tree", node_descriptions: "NodeDescriptions", backref_table: dict[str, BackRef]
     ) -> Generator["Tree", None, None]:
         raise NotImplementedError()
 
@@ -815,10 +816,10 @@ class RelationData(AbstractRelationData):
         super().__init__(op, symbol)
 
     def searchNodeIterator(
-        self, t: "Tree", node_descriptions: "NodeDescriptions"
+        self, t: "Tree", node_descriptions: "NodeDescriptions", backref_table: dict[str, BackRef]
     ) -> Generator["Tree", None, None]:
         for candidate in self.op.searchNodeIterator(t):
-            yield from node_descriptions.searchNodeIterator(candidate, recursive=False)
+            yield from node_descriptions.searchNodeIterator(candidate, backref_table, recursive=False)
 
     # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
     #     return self.op.satisfies(this_node, that_node)
@@ -836,10 +837,10 @@ class RelationWithStrArgData(AbstractRelationData):
         self.arg = arg
 
     def searchNodeIterator(
-        self, t: "Tree", node_descriptions: "NodeDescriptions"
+        self, t: "Tree", node_descriptions: "NodeDescriptions", backref_table: dict[str, BackRef]
     ) -> Generator["Tree", None, None]:
         for candidate in self.op.searchNodeIterator(t, self.arg):
-            yield from node_descriptions.searchNodeIterator(candidate, recursive=False)
+            yield from node_descriptions.searchNodeIterator(candidate, backref_table, recursive=False)
 
     # def satisfies(self, this_node: "Tree", that_node: "Tree") -> bool:
     #     return self.op.satisfies(this_node, that_node, self.arg)
@@ -857,10 +858,10 @@ class RelationWithNumArgData(AbstractRelationData):
         self.arg = arg
 
     def searchNodeIterator(
-        self, t: "Tree", node_descriptions: "NodeDescriptions"
+        self, t: "Tree", node_descriptions: "NodeDescriptions", backref_table: dict[str, BackRef]
     ) -> Generator["Tree", None, None]:
         for candidate in self.op.searchNodeIterator(t, self.arg):
-            yield from node_descriptions.searchNodeIterator(candidate, recursive=False)
+            yield from node_descriptions.searchNodeIterator(candidate, backref_table, recursive=False)
 
     # def searchNodeIterator(self, this_node: "Tree") -> Generator["Tree", None, None]:
     #     return self.op.searchNodeIterator(this_node, self.arg)
