@@ -3,7 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, NoReturn, Optional
 
 from .exceptions import ParseException
 
@@ -74,11 +74,9 @@ class NodeDescriptions:
 
     def set_condition(self, condition: "AbstractCondition") -> None:
         if self.condition is None:
-            self.condition = condition
-        elif isinstance(self.condition, And):
-            self.condition.append_condition(condition)
+            self.condition = And(condition)
         else:
-            self.condition = And(self.condition, condition)
+            self.condition.append_condition(condition)
 
     def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
@@ -296,17 +294,22 @@ class AbstractLogicCondition(AbstractCondition): ...
 
 class And(AbstractCondition):
     def __init__(self, *conds: AbstractCondition):
-        self.conditions = list(conds)
+        if len(conds) == 1 and isinstance(conds[0], And):
+            self.conditions = conds[0].conditions
+            self.names = conds[0].names
+            return
 
         self.names: set[str] = set()
-        # map(self.check_name, conds)
         for cond in conds:
             self.check_name(cond)
 
-    def check_name(self, cond: AbstractCondition):
-        if isinstance(cond, (Not, Opt)):
-            return self.check_name(cond.condition)
-        elif isinstance(cond, Condition):
+        self.conditions = list(conds)
+
+    def check_name(self, cond: AbstractCondition) -> None:
+        while isinstance(cond, (Not, Opt)):
+            cond = cond.condition
+
+        if isinstance(cond, Condition):
             if (name := getattr(cond.node_descriptions, "name", None)) is None:
                 return
             if name in self.names:
@@ -316,8 +319,7 @@ class And(AbstractCondition):
             else:
                 self.names.add(name)
         elif isinstance(cond, (And, Or)):
-            comm = cond.names & self.names
-            if comm:
+            if comm := cond.names & self.names:
                 raise ParseException(
                     f"Variable '{comm.pop()}' was declared twice in the scope of the same conjunction."
                 )
@@ -396,7 +398,23 @@ class Or(AbstractCondition):
 
 class Not(AbstractCondition):
     def __init__(self, condition: AbstractCondition):
+        self.check_name(condition)
         self.condition = condition
+
+    def check_name(self, cond: AbstractCondition) -> None:
+        while isinstance(cond, (Not, Opt)):
+            cond = cond.condition
+
+        if isinstance(cond, Condition):
+            if (name := getattr(cond.node_descriptions, "name", None)) is not None:
+                raise ParseException(f"No named tregex nodes allowed in the scope of negation: {name}")
+        elif isinstance(cond, (And, Or)):
+            if cond.names:
+                raise ParseException(
+                    f"No named tregex nodes allowed in the scope of negation: {', '.join(cond.names)}"
+                )
+        else:
+            assert False, f"Unexpected condition type: {type(cond)}"
 
     def __repr__(self):
         return f"!{self.condition}"

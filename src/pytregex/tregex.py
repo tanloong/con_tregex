@@ -293,11 +293,6 @@ class TregexPattern:
             """
             name: str = p[3]
             node_descriptions: NodeDescriptions = p[1]
-            # '!' has higher precedence than '=', it will have already been
-            # reduced to node_descriptions prior to '='
-            if node_descriptions.under_negation:
-                raise ParseException("No named tregex nodes allowed in the scope of negation")
-
             backref = BackRef(node_descriptions, None)
             self.backref_table[name] = backref
             node_descriptions.set_name(name)
