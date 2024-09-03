@@ -70,13 +70,40 @@ class NodeDescriptions:
         return ret
 
     def set_name(self, name: str) -> None:
+        if self.condition is not None and name in self.condition.names:
+            raise ParseException(f"Variable '{name}' was declared twice in the scope of the same conjunction.")
+
         self.name = name
 
-    def set_condition(self, condition: "AbstractCondition") -> None:
+    def set_condition(self, cond: "AbstractCondition") -> None:
+        self.check_name(cond)
+
         if self.condition is None:
-            self.condition = And(condition)
+            self.condition = And(cond)
         else:
-            self.condition.append_condition(condition)
+            self.condition.append_condition(cond)
+
+    def check_name(self, cond: "AbstractCondition") -> None:
+        if self.name is None:
+            return
+
+        while isinstance(cond, (Not, Opt)):
+            cond = cond.condition
+
+        if isinstance(cond, Condition):
+            if (name := getattr(cond.node_descriptions, "name", None)) is None:
+                return
+            if name == self.name:
+                raise ParseException(
+                    f"Variable '{name}' was declared twice in the scope of the same conjunction."
+                )
+        elif isinstance(cond, (And, Or)):
+            if self.name in cond.names:
+                raise ParseException(
+                    f"Variable '{self.name}' was declared twice in the scope of the same conjunction."
+                )
+        else:
+            assert False, f"Unexpected condition type: {type(cond)}"
 
     def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
@@ -130,12 +157,6 @@ class NodeDescriptions:
         if self.condition is None:
             ret = node_gen
         else:
-            # complains about duplicate names in conjunction
-            if self.name is not None and self.name in self.condition.names:
-                raise ParseException(
-                    f"Variable '{self.name}' was declared twice in the scope of the same conjunction."
-                )
-
             cond_search = self.condition.searchNodeIterator
             ret = (m for node in node_gen for m in cond_search(node, backref_table))
 
