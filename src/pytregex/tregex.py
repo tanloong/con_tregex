@@ -1,7 +1,7 @@
 import logging
 import re
 import warnings
-from typing import List, Never
+from typing import List, Never, Sequence, Union
 
 from . import relation as _r
 from .condition import (
@@ -130,17 +130,19 @@ class TregexPattern:
         self.lexer = lex.lex(module=self)
         self.lexer.input(tregex_pattern)
 
-        self.pattern = tregex_pattern
+        # self.pattern = tregex_pattern
         # > keep track of which variables we've seen, so that we can reject
         # > some nonsense patterns such as ones that reset variables or link
         # > to variables that haven't been set
         self.backref_table: dict[str, BackRef] = {}
 
-    def findall(self, tree_string: str) -> List[Tree]:
+    def findall(self, str_or_trees: Union[str, Sequence[Tree]], /) -> List[Tree]:
         # TODO: must tupleize?
-        trees = tuple(Tree.fromstring(tree_string))
+        trees = tuple(Tree.fromstring(str_or_trees)) if isinstance(str_or_trees, str) else str_or_trees
         parser = self.make_parser(trees)
-        self._reset_lexer_state()
+        # reset lexer.lexpos to make the lexer reusable
+        # https://github.com/dabeaz/ply/blob/master/doc/ply.md#internal-lexer-state
+        self.lexer.lexpos = 0
 
         return parser.parse(lexer=self.lexer, debug=(logging.getLogger().level == logging.DEBUG))
         # return parser.parse(lexer=self.lexer)
@@ -155,14 +157,7 @@ class TregexPattern:
         assert backref.nodes is not None
         return backref.nodes
 
-    def _reset_lexer_state(self) -> None:
-        """
-        reset lexer.lexpos to make the lexer reusable
-        https://github.com/dabeaz/ply/blob/master/doc/ply.md#internal-lexer-state
-        """
-        self.lexer.lexpos = 0
-
-    def make_parser(self, trees: tuple[Tree, ...]):
+    def make_parser(self, trees: Sequence[Tree]):
         tokens = self.tokens
 
         precedence = (
@@ -554,6 +549,6 @@ class TregexPattern:
                 msg = "Parsing Error at EOF"
             else:
                 msg = f"{self.lexer.lexdata}\n{' ' * p.lexpos}˄\nParsing error at token '{p.value}'"
-            raise SystemExit(msg)
+            raise ParseException(msg)
 
         return yacc.yacc(debug=False, start="nodes")
