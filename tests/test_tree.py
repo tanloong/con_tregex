@@ -110,10 +110,10 @@ class TestTree(BaseTmpl):
 
     def test_isLeaf(self):
         tree = Tree()
-        self.assertTrue(tree.isLeaf())
+        self.assertTrue(tree.is_leaf())
 
         tree.children.append(Tree())
-        self.assertFalse(tree.isLeaf())
+        self.assertFalse(tree.is_leaf())
 
     def test_left_sisters(self):
         self.assertIsNone(self.tree[0].left_sisters())

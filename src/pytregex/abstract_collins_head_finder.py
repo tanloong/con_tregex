@@ -49,7 +49,7 @@ class AbstractCollinsHeadFinder(HeadFinder):
                 " nonTerminalInfo."
             )
 
-        if not t or t.isLeaf():
+        if not t or t.is_leaf():
             # raise ValueError("Can't return head of empty or leaf "Tree".")
             return None
 

@@ -55,7 +55,7 @@ class DOMINATES(AbstractRelation):
         iterator = iter(t.children)
         while (node := next(iterator, None)) is not None:
             yield node
-            if not node.isLeaf():
+            if not node.is_leaf():
                 iterator = _chain(node.children, iterator)
 
 
@@ -81,7 +81,7 @@ class ONLY_CHILD_OF(AbstractRelation):
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         parent_ = t.parent
-        if parent_ is not None and parent_.numChildren() == 1:
+        if parent_ is not None and parent_.num_children() == 1:
             yield parent_
 
 
@@ -92,7 +92,7 @@ class HAS_ONLY_CHILD(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        if not t.isLeaf() and t.numChildren() == 1:
+        if not t.is_leaf() and t.num_children() == 1:
             yield t.children[0]
 
 
@@ -149,7 +149,7 @@ class HAS_LEFTMOST_CHILD(AbstractRelation):
 class HAS_RIGHTMOST_DESCENDANT(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.isLeaf():
+        if t1.is_leaf():
             return False
         lastChild = t1.children[-1]
         return lastChild is t2 or HAS_RIGHTMOST_DESCENDANT.satisfies(lastChild, t2)
@@ -180,7 +180,7 @@ class RIGHTMOST_DESCENDANT_OF(AbstractRelation):
 class HAS_LEFTMOST_DESCENDANT(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.isLeaf():
+        if t1.is_leaf():
             return False
         first_child = t1.children[0]
         return first_child is t2 or HAS_LEFTMOST_DESCENDANT.satisfies(first_child, t2)
@@ -271,7 +271,7 @@ class IMMEDIATE_LEFT_SISTER_OF(AbstractRelation):
             for i, child in enumerate(parent_.children):
                 if child is t:
                     break
-            if i + 1 < parent_.numChildren():
+            if i + 1 < parent_.num_children():
                 yield parent_.children[i + 1]
 
 
@@ -357,7 +357,7 @@ class PARENT_EQUALS(AbstractRelation):
 class UNARY_PATH_ANCESTOR_OF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
-        if t1.isLeaf() or t1.numChildren() > 1:
+        if t1.is_leaf() or t1.num_children() > 1:
             return False
         only_child = t1.children[0]
         if only_child is t2:
@@ -368,7 +368,7 @@ class UNARY_PATH_ANCESTOR_OF(AbstractRelation):
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         next = t
-        while next.numChildren() == 1:
+        while next.num_children() == 1:
             kid = next.children[0]
             yield kid
             next = kid
@@ -382,7 +382,7 @@ class UNARY_PATH_DESCEDANT_OF(AbstractRelation):
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         parent_ = t.parent
-        while parent_ is not None and parent_.numChildren() == 1:
+        while parent_ is not None and parent_.num_children() == 1:
             yield parent_
             parent_ = parent_.parent
 
@@ -392,7 +392,7 @@ class HEADS(AbstractRelation):
 
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree", headFinder: Optional["HeadFinder"] = None) -> bool:
-        if t2.isLeaf():
+        if t2.is_leaf():
             return False
         elif t2.is_preterminal():
             return t2.firstChild() is t1
@@ -434,7 +434,7 @@ class HEADED_BY(AbstractRelation):
     ) -> Generator["Tree", None, None]:
         if headFinder is None:
             headFinder = cls.hf
-        if not t.isLeaf():
+        if not t.is_leaf():
             head = headFinder.determineHead(t)
             while head is not None:
                 yield head
@@ -473,7 +473,7 @@ class IMMEDIATELY_HEADED_BY(AbstractRelation):
     def searchNodeIterator(
         cls, t: "Tree", headFinder: Optional["HeadFinder"] = None
     ) -> Generator["Tree", None, None]:
-        if t.isLeaf():
+        if t.is_leaf():
             return
         if headFinder is None:
             headFinder = cls.hf
@@ -528,7 +528,7 @@ class IMMEDIATELY_PRECEDES(AbstractRelation):
         next = parent_.children[i + 1]
         while True:
             yield next
-            if next.isLeaf():
+            if next.is_leaf():
                 break
             next = next.firstChild()
 
@@ -579,7 +579,7 @@ class IMMEDIATELY_FOLLOWS(AbstractRelation):
         next = parent_.children[i - 1]
         while True:
             yield next
-            if next.isLeaf():
+            if next.is_leaf():
                 break
             next = next.lastChild()
 
@@ -587,13 +587,13 @@ class IMMEDIATELY_FOLLOWS(AbstractRelation):
 class ANCESTOR_OF_LEAF(AbstractRelation):
     @classmethod
     def satisfies(cls, t1: "Tree", t2: "Tree") -> bool:
-        return t1 is not t2 and t2.isLeaf() and DOMINATES.satisfies(t1, t2)
+        return t1 is not t2 and t2.is_leaf() and DOMINATES.satisfies(t1, t2)
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         iterator = iter(t.children)
         while (node := next(iterator, None)) is not None:
-            if node.isLeaf():
+            if node.is_leaf():
                 yield node
             else:
                 iterator = _chain(node.children, iterator)
@@ -650,13 +650,13 @@ class UNBROKEN_CATEGORY_PRECEDES(AbstractRelation):
         if parent_ is None:  # if t1 is root
             return False
         i = t1.get_sister_index()
-        while i == (parent_.numChildren() - 1) and parent_.parent is not None:
+        while i == (parent_.num_children() - 1) and parent_.parent is not None:
             t1 = parent_
             parent_ = parent_.parent
             i = t1.get_sister_index()
 
         # ensure i >= 0 because Tree.get_sister_index() might return -1
-        if i >= 0 and (i + 1) < parent_.numChildren():
+        if i >= 0 and (i + 1) < parent_.num_children():
             immediate_follower = parent_.children[i + 1]
         else:
             return False
@@ -700,7 +700,7 @@ class PATTERN_SPLITTER(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        root = t.getRoot()
+        root = t.get_root()
         return root.preorder_iter()
 
 
@@ -727,7 +727,7 @@ class ITH_CHILD_OF(AbstractRelation):
         parent_ = t.parent
         if parent_ is None:
             return
-        if abs(child_num) > parent_.numChildren():
+        if abs(child_num) > parent_.num_children():
             return
         kids = parent_.children
         if (child_num > 0 and kids[child_num - 1] is t) or (child_num < 0 and kids[child_num] is t):
@@ -743,9 +743,9 @@ class HAS_ITH_CHILD(AbstractRelation):
     def searchNodeIterator(cls, t: "Tree", child_num: int) -> Generator["Tree", None, None]:
         if child_num == 0:
             raise ValueError("Error -- no such thing as zeroth child!")
-        if t.isLeaf():
+        if t.is_leaf():
             return
-        if abs(child_num) > t.numChildren():
+        if abs(child_num) > t.num_children():
             return
         if child_num > 0:
             yield t.children[child_num - 1]
@@ -759,12 +759,12 @@ class ANCESTOR_OF_ITH_LEAF(AbstractRelation):
         if leaf_num == 0:
             raise ValueError("Error -- no such thing as zeroth leaf!")
 
-        if t1 is t2 or not t2.isLeaf():
+        if t1 is t2 or not t2.is_leaf():
             return False
 
         # this is kind of lazy if it somehow became a performance limitation, a
         # recursive search would be faster
-        leaves = t1.getLeaves()
+        leaves = t1.get_leaves()
         if len(leaves) < abs(leaf_num):
             return False
         if leaf_num > 0:  # noqa: SIM108
@@ -778,9 +778,9 @@ class ANCESTOR_OF_ITH_LEAF(AbstractRelation):
     def searchNodeIterator(cls, t: "Tree", leaf_num: int) -> Generator["Tree", None, None]:
         if leaf_num == 0:
             raise ValueError("Error -- no such thing as zeroth leaf!")
-        if t.isLeaf():
+        if t.is_leaf():
             return
-        leaves = t.getLeaves()
+        leaves = t.get_leaves()
         if len(leaves) >= abs(leaf_num):
             if leaf_num > 0:
                 yield leaves[leaf_num - 1]
