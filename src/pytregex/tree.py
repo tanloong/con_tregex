@@ -7,16 +7,18 @@ from typing import Optional
 
 from .peekable import peekable
 
+# Reference: [CoreNLP](https://github.com/stanfordnlp/CoreNLP/blob/139893242878ecacde79b2ba1d0102b855526610/src/edu/stanford/nlp/trees/Tree.java)
+
 LRB: str = "("
 RRB: str = ")"
 LRB_ESCAPE: str = "-LRB-"
 RRB_ESCAPE: str = "-RRB-"
 SPACE_SEPARATOR: str = " "
 
-# translated from [CoreNLP](https://github.com/stanfordnlp/CoreNLP/blob/139893242878ecacde79b2ba1d0102b855526610/src/edu/stanford/nlp/trees/Tree.java)
-
 
 class Tree:
+    TOKEN_RE = re.compile(rf"(?x) [{re.escape(LRB)}{re.escape(RRB)}] | [^\s{re.escape(LRB)}{re.escape(RRB)}]+")
+
     def __init__(
         self,
         label: str | None = None,
@@ -60,21 +62,10 @@ class Tree:
         (NN battery)
         (NN plant)
         """
-        open_pattern = re.escape(LRB)
-        close_pattern = re.escape(RRB)
-
-        # store `token_re` to avoid repeated regex compiling
-        attr = "token_re"
-        if (token_re := getattr(cls, attr, None)) is None:
-            token_re = re.compile(
-                rf"(?x) [{open_pattern}{close_pattern}] | [^\s{open_pattern}{close_pattern}]+"
-            )
-            setattr(cls, attr, token_re)
-
         stack_parent: deque[Tree] = deque()
         current_tree = None
 
-        token_g = peekable(token_re.findall(s))
+        token_g = peekable(cls.TOKEN_RE.findall(s))
         while (token := next(token_g, None)) is not None:
             if token == LRB:
                 label = None if token_g.peek() == LRB else next(token_g, None)
@@ -219,6 +210,11 @@ class Tree:
     def span_string(self) -> str:
         """
         Return String of leaves spanned by this tree
+
+        >>> t_gen = Tree.fromstring("( NP (DT The) (NN battery) (NN plant) )")
+        >>> t = next(t_gen)
+        >>> t.span_string()
+        'The battery plant'
         """
         return " ".join(leaf.tostring() for leaf in self.get_leaves() if leaf is not None)
 
@@ -275,5 +271,10 @@ class Tree:
         │   └── battery
         └── NN
             └── plant
+        >>> print(t.render(depth=2))
+        NP
+        ├── DT
+        ├── NN
+        └── NN
         """
         return "\n".join(self._render(depth=depth))
