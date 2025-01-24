@@ -1,7 +1,8 @@
 import logging
 import re
 import warnings
-from typing import List, Never, Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 from . import relation as _r
 from .condition import (
@@ -121,7 +122,7 @@ class TregexPattern:
     t_ROOT = r"_ROOT_"
     t_ignore = " \r\t"
 
-    def t_error(self, t) -> Never:
+    def t_error(self, t):
         raise SystemExit(f'Tokenization error: Illegal character "{t.value[0]}"')
 
     literals = "!?()[]{}@&=~;"
@@ -136,7 +137,7 @@ class TregexPattern:
         # > to variables that haven't been set
         self.backref_table: dict[str, BackRef] = {}
 
-    def findall(self, str_or_trees: Union[str, Sequence[Tree]], /) -> List[Tree]:
+    def findall(self, str_or_trees: Union[str, Sequence[Tree]], /) -> list[Tree]:
         # TODO: must tupleize?
         trees = tuple(Tree.fromstring(str_or_trees)) if isinstance(str_or_trees, str) else str_or_trees
         parser = self.make_parser(trees)
@@ -147,7 +148,7 @@ class TregexPattern:
         return parser.parse(lexer=self.lexer, debug=(logging.getLogger().level == logging.DEBUG))
         # return parser.parse(lexer=self.lexer)
 
-    def get_nodes(self, name: str) -> List[Tree]:
+    def get_nodes(self, name: str) -> list[Tree]:
         try:
             backref = self.backref_table[name]
         except KeyError as e:
@@ -544,7 +545,7 @@ class TregexPattern:
                     nodes.extend(node_descriptions.searchNodeIterator(tree, self.backref_table))
             p[0] = nodes
 
-        def p_error(p) -> Never:
+        def p_error(p):
             if p is None:
                 msg = "Parsing Error at EOF"
             else:

@@ -30,9 +30,6 @@ coverage:
 	python -m coverage html
 
 lint:
-	ruff format src/ tests/
-	ruff check src/ tests/ --fix
-	mypy src/
-
-README_zh_tw.md: README_zh_cn.md
-	cd ~/software/zhconv && python -m zhconv zh-tw < ~/projects/pytregex/README_zh_cn.md > ~/projects/pytregex/README_zh_tw.md
+	@ruff format src/ tests/ --silent
+	@ruff check src/ tests/ --fix --output-format pylint
+	@mypy src/ --show-column-numbers --no-error-summary

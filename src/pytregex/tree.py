@@ -5,7 +5,7 @@ from collections import deque
 from collections.abc import Generator, Iterator
 from io import StringIO
 from itertools import chain as _chain
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 from .peekable import peekable
 
@@ -22,8 +22,8 @@ SPACE_SEPARATOR: str = " "
 class Tree:
     def __init__(
         self,
-        label: str | None = None,
-        children: list["Tree"] | None = None,
+        label: Optional[str] = None,
+        children: Optional[list["Tree"]] = None,
         parent: Optional["Tree"] = None,
     ):
         self.set_label(label)
@@ -39,7 +39,7 @@ class Tree:
     def __repr__(self):
         # https://github.com/stanfordnlp/stanza/blob/c2d72bd14cf8cc28bd4e41a620692bbce5f43835/stanza/models/constituency/parse_tree.py#L118
         with StringIO() as buf:
-            stack: deque[Tree | str] = deque()
+            stack: deque[Union[Tree, str]] = deque()
             stack.append(self)
             while len(stack) > 0:
                 node = stack.pop()
@@ -109,7 +109,7 @@ class Tree:
         return len(self.children)
 
     @property
-    def basic_category(self) -> str | None:
+    def basic_category(self) -> Optional[str]:
         if self.label is None:
             return None
         return self.label.split("-")[0]
@@ -224,13 +224,13 @@ class Tree:
         if self.isLeaf():
             return self
 
-        head: Tree | None = hf.determineHead(self)
+        head: Optional[Tree] = hf.determineHead(self)
         if head is not None:
             return head.head_terminal(hf)
 
         return None
 
-    def get_terminal_labels(self) -> list[str | None]:
+    def get_terminal_labels(self) -> list[Optional[str]]:
         """
         Gets labels of terminal nodes. The Label of all leaf nodes is returned
         as a list ordered by the natural left to right order of the leaves.
@@ -312,9 +312,9 @@ class Tree:
                 return i
         return -1
 
-    def set_label(self, label: str | None) -> None:
+    def set_label(self, label: Optional[str]) -> None:
         if isinstance(label, str):
-            self.label: str | None = self.normalize(label)
+            self.label: Optional[str] = self.normalize(label)
         elif label is None:
             self.label = None
         else:
@@ -410,14 +410,14 @@ class Tree:
             root_ = root_.parent
         return root_
 
-    def left_sisters(self) -> list | None:
+    def left_sisters(self) -> Optional[list]:
         sister_index_ = self.get_sister_index()
         is_not_the_first = sister_index_ is not None and sister_index_ > 0
         if is_not_the_first:
             return self.parent.children[:sister_index_]  # type:ignore
         return None
 
-    def right_sisters(self) -> list | None:
+    def right_sisters(self) -> Optional[list]:
         sister_index_ = self.get_sister_index()
         is_not_the_last = sister_index_ is not None and sister_index_ < (
             len(self.parent.children) - 1  # type:ignore

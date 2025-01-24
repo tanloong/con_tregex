@@ -6,7 +6,6 @@ import glob
 import logging
 import os
 import sys
-from typing import List
 
 from .tregex import TregexPattern
 from .utils import TregexProcedureResult
@@ -140,8 +139,7 @@ class TregexUI:
                 self.verified_ifile_list = verified_ifile_list
 
         default_tree_string = (
-            "(VP (VP (VBZ Try) (NP (NP (DT this) (NN wine)) (CC and) (NP (DT these) (NNS"
-            " snails)))) (PUNCT .))"
+            "(VP (VP (VBZ Try) (NP (NP (DT this) (NN wine)) (CC and) (NP (DT these) (NNS snails)))) (PUNCT .))"
         )
 
         # run matcher
@@ -159,8 +157,13 @@ class TregexUI:
             logging.debug(f"No tree input. Using the default {default_tree_string}.")
             tree_string = default_tree_string
 
+        # from viztracer import VizTracer
+        # tracer = VizTracer()
+        # tracer.start()
         pattern = TregexPattern(options.pattern)
         matches = pattern.findall(tree_string)
+        # tracer.stop()
+        # tracer.save()
 
         if options.handles:
             logging.debug("Printing handles...")
@@ -206,7 +209,7 @@ class TregexUI:
                 sys.stdout.write(f"{t.render()}\n")
         return True, None
 
-    def run_args(self, argv: List[str]) -> TregexProcedureResult:
+    def run_args(self, argv: list[str]) -> TregexProcedureResult:
         options, self.ipath_list = self.args_parser.parse_known_args(argv[1:])
 
         if options.version:

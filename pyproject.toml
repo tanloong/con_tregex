@@ -1,4 +1,41 @@
-# vim:tabstop=2:shiftwidth=2
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytregex"
+authors = [{name = "Long Tan", email = "tanloong@foxmail.com"}]
+description = "Tregex written in Python"
+dependencies = []
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+dynamic = ["version"]
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+]
+
+[project.urls]
+Homepage = "https://github.com/tanloong/pytregex"
+
+[project.scripts]
+pytregex = "pytregex.main:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "pytregex.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 # Ruff complete options: https://docs.astral.sh/ruff/settings/#extend
 [tool.ruff]
 line-length = 112
@@ -16,10 +53,10 @@ select = [
   "I", # isort
 ]
 ignore = [
-  "E501",
-  "B011",
-  "UP038", # 'isinstance(x, int | float)' causes slower code
-  "B007", # Loop control variable `i` not used within loop body
+  "E501", # Line too long
+  # "B011",
+  # "UP038", # 'isinstance(x, int | float)' causes slower code
+  # "B007", # Loop control variable `i` not used within loop body
 ]
 [tool.ruff.lint.per-file-ignores]
 "src/pytregex/tregex.py" = [
@@ -39,12 +76,6 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
-
-[tool.mypy]
-# https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-library-stubs-or-py-typed-marker
-ignore_missing_imports = true
-check_untyped_defs = true
-exclude =[ "src/pytregex/ply/", "src/pytregex/peekable.py" ]
 
 [tool.pyright]
 reportIncompatibleMethodOverride = false

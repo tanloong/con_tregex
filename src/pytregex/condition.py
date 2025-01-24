@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+import logging
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Generator, Iterable, Iterator
 from copy import deepcopy
-from typing import TYPE_CHECKING, Generator, Iterable, Iterator, List, NamedTuple, NoReturn, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from .exceptions import ParseException
 
@@ -11,9 +13,11 @@ if TYPE_CHECKING:
     from .relation import AbstractRelationData
     from .tree import Tree
 
+# mypy: disable-error-code="override"
+
 
 class NamedNodes:
-    def __init__(self, name: Optional[str], nodes: Optional[List["Tree"]], string_repr: str = "") -> None:
+    def __init__(self, name: Optional[str], nodes: Optional[list["Tree"]], string_repr: str = "") -> None:
         self.name = name
         self.nodes = nodes
         self.string_repr = string_repr
@@ -21,7 +25,7 @@ class NamedNodes:
     def set_name(self, new_name: Optional[str]) -> None:
         self.name = new_name
 
-    def set_nodes(self, new_nodes: List["Tree"]) -> None:
+    def set_nodes(self, new_nodes: list["Tree"]) -> None:
         self.nodes = new_nodes
 
 
@@ -37,6 +41,12 @@ class BackRef:
     def __init__(self, node_descriptions: "NodeDescriptions", nodes: Optional[list["Tree"]]) -> None:
         self.node_descriptions = node_descriptions
         self.nodes = nodes
+
+    def store_nodes(self, nodes: list["Tree"]) -> None:
+        if self.nodes is not None:
+            self.nodes.extend(nodes)
+        else:
+            self.nodes = nodes
 
 
 class NodeDescriptions:
@@ -103,7 +113,7 @@ class NodeDescriptions:
                     f"Variable '{self.name}' was declared twice in the scope of the same conjunction."
                 )
         else:
-            assert False, f"Unexpected condition type: {type(cond)}"
+            raise AssertionError(f"Unexpected condition type: {type(cond)}")
 
     def add_description(self, other_description: NodeDescription) -> None:
         self.descriptions.append(other_description)
@@ -151,9 +161,10 @@ class NodeDescriptions:
     def searchNodeIterator(
         self, t: "Tree", backref_table: dict[str, BackRef], *, recursive: bool = True
     ) -> Generator["Tree", None, None]:
-        node_gen = t.preorder_iter() if recursive else (t for _ in range(1))
-        node_gen = filter(self._satisfies_ignore_condition, node_gen)
+        node_gen: Generator[Tree, None, None] = t.preorder_iter() if recursive else (t for _ in range(1))
+        node_gen = (n for n in node_gen if self._satisfies_ignore_condition(n))
 
+        ret: Union[Generator[Tree, None, None], list[Tree]]
         if self.condition is None:
             ret = node_gen
         else:
@@ -162,12 +173,8 @@ class NodeDescriptions:
 
         if self.name is not None:
             ret = list(ret)
-            if backref_table[self.name].nodes is not None:
-                backref_table[self.name].nodes.extend(ret)
-            else:
-                backref_table[self.name].nodes = ret
+            backref_table[self.name].store_nodes(ret)
         yield from ret
-
 
 class NODE_OP(ABC):
     @classmethod
@@ -306,8 +313,7 @@ class Condition(AbstractCondition):
             yield t
 
 
-# ----------------------------------------------------------------------------
-#                                   Logic
+################################### LOGIC ####################################
 
 
 class AbstractLogicCondition(AbstractCondition): ...
@@ -315,12 +321,15 @@ class AbstractLogicCondition(AbstractCondition): ...
 
 class And(AbstractCondition):
     def __init__(self, *conds: AbstractCondition):
+        self.names: set[str]
+        self.conditions: list[AbstractCondition]
+
         if len(conds) == 1 and isinstance(conds[0], And):
             self.conditions = conds[0].conditions
             self.names = conds[0].names
             return
 
-        self.names: set[str] = set()
+        self.names = set()
         for cond in conds:
             self.check_name(cond)
 
@@ -347,7 +356,7 @@ class And(AbstractCondition):
             else:
                 self.names.update(cond.names)
         else:
-            assert False, f"Unexpected condition type: {type(cond)}"
+            raise AssertionError(f"Unexpected condition type: {type(cond)}")
 
     def __repr__(self):
         return " ".join(map(str, self.conditions))
@@ -355,7 +364,7 @@ class And(AbstractCondition):
     def searchNodeIterator(self, t: "Tree", backref_table: dict[str, BackRef]) -> Generator["Tree", None, None]:
         old_backref_table = deepcopy(backref_table)
 
-        candidates = (t,)
+        candidates: tuple[Tree, ...] = (t,)
         for condition in self.conditions:
             candidates = tuple(
                 node
@@ -397,7 +406,7 @@ class Or(AbstractCondition):
         elif isinstance(cond, (And, Or)):
             self.names.update(cond.names)
         else:
-            assert False, f"Unexpected condition type: {type(cond)}"
+            raise AssertionError(f"Unexpected condition type: {type(cond)}")
 
     def __repr__(self):
         return f"[ {' || '.join(map(str, self.conditions))} ]"
@@ -435,7 +444,7 @@ class Not(AbstractCondition):
                     f"No named tregex nodes allowed in the scope of negation: {', '.join(cond.names)}"
                 )
         else:
-            assert False, f"Unexpected condition type: {type(cond)}"
+            raise AssertionError(f"Unexpected condition type: {type(cond)}")
 
     def __repr__(self):
         return f"!{self.condition}"

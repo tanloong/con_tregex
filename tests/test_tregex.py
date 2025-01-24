@@ -21,8 +21,7 @@ class TestTregex(BaseTmpl):
     def test_JoãoSilva(self):
         tregex1 = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, __=m <- (__ <, CONJ <- __=z))))")
         tregex2 = TregexPattern(
-            "PNT=p >>- (/(.+)/#1%var=l >, (__=t <- (__=r <, /(.+)/#1%var=m <- (__ <, CONJ <-"
-            " /(.+)/#1%var=z))))"
+            "PNT=p >>- (/(.+)/#1%var=l >, (__=t <- (__=r <, /(.+)/#1%var=m <- (__ <, CONJ <- /(.+)/#1%var=z))))"
         )
         tregex3 = TregexPattern("PNT=p >>- (__=l >, (__=t <- (__=r <, ~l <- (__ <, CONJ <- ~l))))")
         tree_string = "(T (X (N (N Moe (PNT ,)))) (NP (X (N Curly)) (NP (CONJ and) (X (N Larry)))))"
@@ -817,12 +816,11 @@ class TestTregex(BaseTmpl):
         self.run_test(test_pattern, "(ROOT " + test_tree + ")", test_tree)
 
         test_tree = (
-            "(ROOT (S (NP (PRP$ My) (NN dog)) (VP (VBZ is) (VP (VBG eating) (NP (DT a) (NN"
-            " sausage)))) (. .)))"
+            "(ROOT (S (NP (PRP$ My) (NN dog)) (VP (VBZ is) (VP (VBG eating) (NP (DT a) (NN sausage)))) (. .)))"
         )
         self.run_test(test_pattern, test_tree)
 
-        test_tree = "(ROOT (S (NP (PRP He)) (VP (MD will) (VP (VB be) (ADVP (RB here) (RB soon)))) (." " .)))"
+        test_tree = "(ROOT (S (NP (PRP He)) (VP (MD will) (VP (VB be) (ADVP (RB here) (RB soon)))) (. .)))"
         self.run_test(test_pattern, test_tree)
 
         test_pattern = "/^NP(?:-TMP|-ADV)?$/=m1 < (NP=m2 $- /^,$/ $-- NP=m3 !$ CC|CONJP)"
@@ -885,7 +883,7 @@ class TestTregex(BaseTmpl):
                 "(ROOT (S (NP (NNS Raccoons)) (VP (VBP do) (VP (VB come) (WHADVP (WRB When))"
                 " (PRT (RP out)))) (. .)))"
             ),
-            ("(ROOT (S (NP (PRP She)) (VP (VBZ is) (VP (WHADVP (WRB Where)) (VBG working)))" " (. .)))"),
+            ("(ROOT (S (NP (PRP She)) (VP (VBZ is) (VP (WHADVP (WRB Where)) (VBG working))) (. .)))"),
             "(ROOT (S (NP (PRP You)) (VP (VBD did) (VP (WHNP (WP What)) (VB do))) (. .)))",
             (
                 "(ROOT (S (NP (PRP You)) (VP (VBD did) (VP (VB do) (PP (IN in) (NP (NNP"
@@ -1023,11 +1021,11 @@ class TestTregex(BaseTmpl):
         pattern = TregexPattern("__ ! > __=a")
         self.assertRaises(ParseException, pattern.findall, "(A)")
 
-        self.assertRaises(ParseException, self.run_test, 'A=a < B=a < C=a', "")
-        self.assertRaises(ParseException, self.run_test, 'A=a < B=a', "")
-        self.assertRaises(ParseException, self.run_test, 'A=a [<B=a || <C=a]', "")
-        self.assertRaises(ParseException, self.run_test, 'A=a ?[<B=a || <C=a]', "")
-        self.assertRaises(ParseException, self.run_test, 'A=a ![<B=a || <C=a]', "")
+        self.assertRaises(ParseException, self.run_test, "A=a < B=a < C=a", "")
+        self.assertRaises(ParseException, self.run_test, "A=a < B=a", "")
+        self.assertRaises(ParseException, self.run_test, "A=a [<B=a || <C=a]", "")
+        self.assertRaises(ParseException, self.run_test, "A=a ?[<B=a || <C=a]", "")
+        self.assertRaises(ParseException, self.run_test, "A=a ![<B=a || <C=a]", "")
 
     def test_numbered_sister(self):
         # this shouldn't mean anything

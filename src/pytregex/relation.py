@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
+from collections.abc import Generator, Iterator
 from itertools import chain as _chain
-from typing import TYPE_CHECKING, Generator, Iterator, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from .collins_head_finder import CollinsHeadFinder
 from .condition import BackRef
@@ -16,7 +17,9 @@ if TYPE_CHECKING:
 # translated from https://github.com/stanfordnlp/CoreNLP/blob/main/src/edu/stanford/nlp/trees/tregex/Relation.java
 # last modified at Apr 3, 2022 (https://github.com/stanfordnlp/CoreNLP/commits/main/src/edu/stanford/nlp/trees/tregex/Relation.java)
 
-# ------------------------------------------------------------------------------
+################################### RELATION ###################################
+
+# mypy: disable-error-code="override"
 
 # TODO ROOT subclass
 
@@ -268,11 +271,11 @@ class IMMEDIATE_LEFT_SISTER_OF(AbstractRelation):
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         parent_ = t.parent
         if parent_ is not None:
-            for i, child in enumerate(parent_.children):
+            for _i, child in enumerate(parent_.children):
                 if child is t:
                     break
-            if i + 1 < parent_.numChildren():
-                yield parent_.children[i + 1]
+            if _i + 1 < parent_.numChildren():
+                yield parent_.children[_i + 1]
 
 
 class IMMEDIATE_RIGHT_SISTER_OF(AbstractRelation):
@@ -284,11 +287,11 @@ class IMMEDIATE_RIGHT_SISTER_OF(AbstractRelation):
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
         parent_ = t.parent
         if parent_ is not None:
-            for i, child in enumerate(parent_.children):
+            for _i, child in enumerate(parent_.children):
                 if child is t:
                     break
-            if i > 0:
-                yield parent_.children[i - 1]
+            if _i > 0:
+                yield parent_.children[_i - 1]
 
 
 class PARENT_OF(AbstractRelation):
@@ -489,7 +492,7 @@ class PRECEDES(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        searchStack: List[Tree] = []
+        searchStack: list[Tree] = []
         current: Optional[Tree] = t
         parent_: Optional[Tree] = t.parent
         while parent_ is not None:
@@ -516,16 +519,16 @@ class IMMEDIATELY_PRECEDES(AbstractRelation):
         parent_: Optional[Tree] = t
         while True:
             current = parent_
-            parent_ = parent_.parent
+            parent_ = parent_.parent  # type: ignore
             if parent_ is None:
                 return
             if parent_.lastChild() is not current:
                 break
-        for i, kid in enumerate(parent_.children):
+        for _i, kid in enumerate(parent_.children):
             if kid is current:
                 break
         # Use i+1 won't cause IndexError because current is not the last child
-        next = parent_.children[i + 1]
+        next = parent_.children[_i + 1]
         while True:
             yield next
             if next.isLeaf():
@@ -540,7 +543,7 @@ class FOLLOWS(AbstractRelation):
 
     @classmethod
     def searchNodeIterator(cls, t: "Tree") -> Generator["Tree", None, None]:
-        searchStack: List[Tree] = []
+        searchStack: list[Tree] = []
         current: Optional[Tree] = t
         parent_: Optional[Tree] = t.parent
         while parent_ is not None:
@@ -567,16 +570,16 @@ class IMMEDIATELY_FOLLOWS(AbstractRelation):
         parent_: Optional[Tree] = t
         while True:
             current = parent_
-            parent_ = parent_.parent
+            parent_ = parent_.parent  # type: ignore
             if parent_ is None:
                 return
             if parent_.firstChild() is not current:
                 break
-        for i, kid in enumerate(parent_.children):
+        for _i, kid in enumerate(parent_.children):
             if kid is current:
                 break
         # Use i-1 won't cause IndexError because current is not the first child
-        next = parent_.children[i - 1]
+        next = parent_.children[_i - 1]
         while True:
             yield next
             if next.isLeaf():
@@ -715,7 +718,7 @@ class ITH_CHILD_OF(AbstractRelation):
             return False
         if child_num > 0 and kids[child_num - 1] is t1:
             return True
-        if child_num < 0 and kids[len(kids) + child_num] is t1:
+        if child_num < 0 and kids[len(kids) + child_num] is t1:  # noqa: SIM103
             return True
 
         return False
@@ -788,8 +791,7 @@ class ANCESTOR_OF_ITH_LEAF(AbstractRelation):
                 yield leaves[leaf_num]
 
 
-# ------------------------------------------------------------------------------
-# RelationData
+################################# RELATION DATA ################################
 
 
 class AbstractRelationData(ABC):
