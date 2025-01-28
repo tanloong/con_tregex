@@ -16,14 +16,15 @@ class TregexUI:
         self.args_parser: argparse.ArgumentParser = self.create_args_parser()
 
     def __add_log_levels(self, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument(
             "--quiet",
             dest="is_quiet",
             action="store_true",
             default=False,
             help="disable all loggings",
         )
-        parser.add_argument(
+        group.add_argument(
             "--verbose",
             dest="is_verbose",
             action="store_true",
@@ -103,7 +104,15 @@ class TregexUI:
 
     def create_pprint_parser(self, subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
         pprint_parser = subparsers.add_parser("pprint", help="pretty print the give constituency tree")
-        pprint_parser.add_argument("treestring", nargs="?", help="the constituency tree to print")
+        group = pprint_parser.add_mutually_exclusive_group()
+        group.add_argument("treestring", nargs="?", help="the constituency tree to print")
+        group.add_argument(
+            "-",
+            action="store_true",
+            dest="is_stdin",
+            default=False,
+            help="Read tree input from stdin",
+        )
         self.__add_log_levels(pprint_parser)
         pprint_parser.set_defaults(func=self.run_pprint_args)
         return pprint_parser
@@ -198,13 +207,13 @@ class TregexUI:
         return True, None
 
     def run_pprint_args(self, options: argparse.Namespace) -> TregexProcedureResult:
-        if options.treestring is None:
+        if options.treestring is None and not options.is_stdin:
             self.pprint_parser.print_help()
             return True, None
 
         from .tree import Tree
 
-        for t in Tree.fromstring(options.treestring):
+        for t in Tree.fromstring(options.treestring or sys.stdin.read()):
             with contextlib.suppress(BrokenPipeError):
                 sys.stdout.write(f"{t.render()}\n")
         return True, None
@@ -214,9 +223,6 @@ class TregexUI:
 
         if options.version:
             return self.show_version()
-
-        if options.is_verbose and options.is_quiet:
-            return False, "logging cannot be quiet and verbose at the same time"
 
         if options.is_quiet:
             logging.basicConfig(format="%(message)s", level=logging.CRITICAL)
